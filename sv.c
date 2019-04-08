@@ -29,14 +29,14 @@ char** parse(char* buf){
 int main(int argc, char const *argv[]){
 	mkfifo("pipe",0644);
 	int pipe = open("pipe",O_RDONLY);
-	int strings = open("STRINGS.txt",O_CREAT | O_RDONLY |  O_WRONLY, 0666);
-	int artigos = open("ARTIGOS.txt",O_CREAT | O_RDONLY |  O_WRONLY, 0666);
+	int strings = open("STRINGS.txt",O_CREAT | O_RDWR, 0666);
+	int artigos = open("ARTIGOS.txt",O_CREAT | O_RDWR, 0666);
 	
 	//char* aux = malloc(1024*sizeof(char));
 	char* buf = malloc(1024*sizeof(char));
 	char* buf2 = malloc(1024*sizeof(char));
-	char* linha_nova = malloc(1024*sizeof(char));
-	char* linha_nova2 = malloc(1024*sizeof(char));
+	
+	
 	char** input = malloc(3*sizeof(char*));
 	char** old = malloc(3*sizeof(char*));
 	int n = 0;
@@ -48,6 +48,7 @@ int main(int argc, char const *argv[]){
 			case 'i':
 				printf("strlen:%d\n", (int) strlen(buf));
 				input=parse(buf);
+				char* linha_nova = malloc(1024*sizeof(char));
 				sprintf(linha_nova, "%d", nextCode++);
 				strcat(linha_nova," ");
 				strcat(linha_nova,input[1]);
@@ -58,24 +59,29 @@ int main(int argc, char const *argv[]){
 
 				while(i>=0) free(input[i--]);
 				free(input);
-
+				free(linha_nova);
+				break;
 			case 'n': 
 				printf("strlen:%d\n", (int) strlen(buf));
 				input=parse(buf);
 				printf("oi\n");
 				while ((a = read(strings,buf2,1024)) > 0){ // help me here :)
+					printf("oi22\n");					
 					old=parse(buf2);
 					if (atoi(input[1])==atoi(old[0])){
 					printf("tok2:iasoi\n");
 					// lseek(strings,atoi(input[1]),SEEK_SET);
+					char* linha_nova2 = malloc(1024*sizeof(char));
 					strcat(linha_nova2,input[1]);					
 					strcat(linha_nova2," ");
 					strcat(linha_nova2,old[2]);
 					strcat(linha_nova2," ");
 					strcat(linha_nova2,input[2]);
-					write(strings,linha_nova2,(int) strlen(linha_nova2));				
+				//	write(strings,linha_nova2,(int) strlen(linha_nova2));				
+					free(linha_nova2);					
 					}
 				}
+			 	
 						
 			break;
 		}
@@ -83,6 +89,7 @@ int main(int argc, char const *argv[]){
 	}
 
 	free(buf);
+	free(buf2);
 	close(pipe);
 	close(artigos);
 	close(strings);
