@@ -52,14 +52,20 @@ int main(int argc, char const *argv[]){
 			case 'i':
 				printf("strlen:%d\n", (int) strlen(buf));
 				input=parse(buf);
-				char* linha_nova = malloc(1024*sizeof(char));
+				char* linha_nova = malloc(300*sizeof(char));
 				sprintf(linha_nova, "%d", nextCode++);
 				strcat(linha_nova," ");
 				strcat(linha_nova,input[1]);
 				strcat(linha_nova," ");
 				strcat(linha_nova,input[2]);
+				int tam = (int)strlen(linha_nova);
+				while(tam<199){
+					 strcat(linha_nova," ");
+					 tam = (int)strlen(linha_nova);
+				}
 				strcat(linha_nova,"\n");
 				printf("linha_nova: %s",linha_nova);
+				printf("strlen nova :%d\n", (int) strlen(linha_nova));
 				write(strings,linha_nova,(int) strlen(linha_nova));
 
 				while(i>=0) free(input[i--]);
@@ -69,28 +75,28 @@ int main(int argc, char const *argv[]){
 			case 'n':
 				printf("strlen:%d\n", (int) strlen(buf));
 				input=parse(buf);
-				lseek(strings, atoi(input[1]) , SEEK_SET);
-				a = read(strings,buf2,1024); // help me here :)
-				if(a>0){	
+				lseek(strings, 0, SEEK_SET);
+				while ((a = read(strings,buf2,1024)) > 0){ 
 					old=parse(buf2);
-					int d = strlen(old[1])-strlen(input[2]);
-					//lseek(strings,atoi(input[1]),SEEK_SET);
+					if (atoi(input[1])==atoi(old[0])){
+
 					char* linha_nova2 = malloc(1024*sizeof(char));
 					strcat(linha_nova2,input[1]);
 					strcat(linha_nova2," ");
 					strcat(linha_nova2,input[2]);
 					strcat(linha_nova2," ");
 					strcat(linha_nova2,old[2]);
-					while(d<0){
-					strcat(linha_nova2," ");
-					d++;
+					int tam = (int)strlen(linha_nova2);
+					while(tam<199){
+						 strcat(linha_nova2," ");
+						 tam = (int)strlen(linha_nova2);
 					}
 					strcat(linha_nova2,"\n");
-					//lseek(strings, 0, SEEK_END);
-					lseek(strings,atoi(input[1]),SEEK_SET);
+					lseek(strings, 0, SEEK_END);
 					printf("linha_nova2: %s",linha_nova2);
 					write(strings,linha_nova2,(int) strlen(linha_nova2));
 					free(linha_nova2);
+					}
 				}
 				lseek(strings, 0, SEEK_END);
 				printf("Sai: %s\n", strerror(errno));
