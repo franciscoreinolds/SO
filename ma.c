@@ -12,7 +12,8 @@ int main(int argc, char const *argv[]){
 	int n = 0;
 	while ((n = read(0,buf,1024))>0 && (strncmp("q",buf,1))!=0){
 		write(pipe,buf,1024);
-		memset(buf,0,1024);
+		printf("buf: %s\n",buf);
+		//memset(buf,0,1024);
 	}
 	close(pipe);
 	return 0;

@@ -103,14 +103,57 @@ int main(int argc, char const *argv[]){
 
 
 			break;
+			case 'n':;
+				int r;
+				r = buf[2] - '0';
+				printf("O n: %d\n",r);
+				int codigo, referencia = -1;
+				while (fscanf(artigos,"%d %d\n", &codigo, &referencia)!=EOF) if (codigo==r) break;
+				if (referencia != -1) {
+					char* toChange = malloc(1024*sizeof(char));
+					int code, ref, count = 0;
+					rewind(strings);
+					//while ((n = fscanf(strings,"%d %s %d\n", &code, toChange, &ref))==3) printf("n %d apanhado: %d %s %d\n",n,code,toChange,ref);
+					while(fscanf(strings,"%d %s %d\n", &code, toChange, &ref)==3) {
+							printf("count: %d referencia: %d\n", count, referencia);
+							printf("apanhado: %d %s %d\n",code,toChange,ref);
+						    if (count == referencia) {
+						    	fprintf(strings,"%d %s %d\n",code,"ISTO NAO E LIMONADA",ref);
+						    	printf("Inserido: %d %s %d\n",code,toChange,ref);
+					    }
+					    else count++;
+					   	memset(toChange,0,1024);
+					}
+					/*
+					while (fgets(toChange,1024, file)!= NULL){
+
+					}
+					*/
+					free(toChange);
+				}
+				else break;
+				rewind(strings);
+				rewind(artigos);
+			break;
+			case 'p':
+			break;
 		}
-		//memset(buf,0,1024*sizeof(char));
+		memset(buf,0,1024);
 	}
+
+	/*
+	while ((n = read(pipe,buf,1024)) > 0){
+	}
+	*/
 
 	free(buf);
 	free(buf2);
 	close(pipe);
 	close(artigos);
 	close(strings);
+	fclose(tubo);
+	fclose(artigos);
+	fclose(strings);
+	unlink("pipe");
 	return 0;
 }
