@@ -5,3 +5,5 @@ i limonada 10
 i vinho 5
 i coral 50
 i agua 5
+n 0 bife
+n 0 carte

@@ -1,0 +1,4 @@
+Artigos: Código (implícito) (int) | Preço (int) | Referência (da string)
+Strings: Nome 
+Stocks: Código (implícito) (int) | Stock Atual (int)
+Vendas: Código (implícito) (int) | Quantidade  (int) | Montante_Venda (int)
