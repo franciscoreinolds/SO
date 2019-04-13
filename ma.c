@@ -10,7 +10,7 @@
 
 int signalPid = -1;
 int mypid;
-char fifo[7];
+char fifo[15];
 
 void get_pid(int sig, siginfo_t *info, void *context){
     signalPid = info->si_pid;
@@ -18,10 +18,8 @@ void get_pid(int sig, siginfo_t *info, void *context){
 }
 
 int main(int argc, char const *argv[]){
-	int pipe = open("pipe",O_WRONLY);
+	int pipe = (int) open("pipe",O_WRONLY);
 	mypid = getpid();
-	printf("PID MA: %d\n", getpid());       //display PID for kill()
-
    	struct sigaction sa;
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = get_pid;
@@ -34,14 +32,21 @@ int main(int argc, char const *argv[]){
    	q.code = -1;
    	q.value=0;
    	memset(&q.name,0,128);
-   	sprintf(fifo,"%d",getpid());
+   	sprintf(fifo,"pipe%d",getpid());
 	strcpy(q.name,fifo);
+	printf("fifo: %s\n",fifo);
 	write(pipe,&q,sizeof(q));
-   	
-   	printf("PID: %d\n",getpid());
+
+   	mkfifo(fifo,0644);
+   	int serverInput = open(fifo,O_RDWR);
+   	if(serverInput!=-1) {
+   		printf("serverInput:%d\n",serverInput);
+   		//dup2(serverInput,1);
+   		//close(serverInput);
+   	}
 
 	char* buf = malloc(1024*sizeof(char));
-	
+
 	while (fgets(buf, 1024, stdin)) {
 		char *token = strtok(buf," ");
 		char** info = malloc(3*sizeof(char*));
@@ -50,9 +55,11 @@ int main(int argc, char const *argv[]){
 		for(it=0;token!=NULL;token = strtok(NULL," "),it++) info[it] = strdup(token);
 
 		switch(info[0][0]){
-			case 'i':
+			case 'i':;
+				/*
 				printf("Case i\n");
 				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
+				*/
 				query caseI;
 				memset(&caseI.name,0,128);
 				caseI.pid = mypid;
@@ -62,10 +69,16 @@ int main(int argc, char const *argv[]){
 				strcpy(caseI.name,info[1]);
 				caseI.value = atoi(info[2]);
 				write(pipe,&caseI,sizeof(caseI));
+				char* res = malloc(1024*sizeof(char));
+				read(serverInput,res,1024);
+				printf("buf: %s\n",res);
+				fflush(stdout);
 			break;
-			case 'n':
+			case 'n':;
+				/*
 				printf("Case n\n");
 				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
+				*/
 				query caseN;
 				memset(&caseN.name,0,128);
 				caseN.pid = mypid;
@@ -76,9 +89,11 @@ int main(int argc, char const *argv[]){
 				caseN.value = 0;
 				write(pipe,&caseN,sizeof(caseN));
 			break;
-			case 'p':
+			case 'p':;
+				/*
 				printf("Case p\n");
 				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
+				*/
 				query caseP;
 				memset(&caseP.name,0,128);
 				caseP.pid = mypid;
@@ -90,21 +105,33 @@ int main(int argc, char const *argv[]){
 			break;
 		}	
 
+		printf("pipe:%d\n",pipe);
 
 		for(it=0;it<3;it++) free(info[it]);
 
 		free(info);
 
-		/*
-	   	struct query *q = malloc(sizeof(struct query));
-	   	q->pid = getpid();
-	   	q->type = 0; //Client
-	   	q->operation = 0; //Syncing
-	   	write(pipe,q,sizeof(q));
-	   	*/
-	}
+		//sleep(1);
 
+	}
+	/*
+	int n;
+	while((n = read(serverInput,buf,1024))>0) write(1,buf,n);
+	*/
+	close(serverInput);
 	free(buf);
+	
+   	query q2;
+   	q2.pid = mypid;
+   	q2.type = 0; //Article Maintenance
+   	q2.operation = 6; // Disconnecting
+   	q2.code = -1;
+   	q2.value = 0;
+   	memset(&q2.name,0,128);
+	write(pipe,&q2,sizeof(q2));
 	close(pipe);
+	printf("Beginning the wait..\n");
+	pause();
+	printf("Received signal\n");
 	return 0;
 }

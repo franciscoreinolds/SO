@@ -6,119 +6,99 @@
 #include <sys/stat.h> 
 #include <sys/types.h>
 #include <signal.h>
+#include <time.h>
+#include <math.h>
+#include <string.h>
 #include "structures.h"
 
 int nextCode = 0;
 int nextRef = 0;
 int clientN = 0;
+NODE* userList;
+query q;
 
 int main(int argc, char const *argv[]){
-	mkfifo("pipe",0644);
+
+   	clock_t CPU_time_1 = clock();
+	init(&userList);
+	mkfifo("pipe",0666);
 	int pipe = open("pipe",O_RDONLY);
-	FILE* strings = fopen("STRINGS.txt","a+");
-	FILE* artigos = fopen("ARTIGOS.txt","a+");
+	FILE* strings = fopen("STRINGS","ab+");
+	FILE* artigos = fopen("ARTIGOS","wb+");
 
-	printf("PID Server: %d\n", getpid()); //display PID for kill()
-
-	query q;
 	int n;
 	while((n=read(pipe,&q,sizeof(q)))>0){
 		switch(q.operation){
-			case 0: //Connection establishment
-				printf("The user that wants to connect is of type %d and has a pid of %d\n");			
+			case 0: // Connection establishment
+				printf("The user that wants to connect is of type %d and has a pid of %d\n",q.type,q.pid);			
+				user element;
+				element.pid = q.pid;
+				strcpy(element.namedPipe,q.name);
+				element.type = q.type;
+				element.fd = open(q.name,O_RDWR);
+				printf("Opening pipe %s numbered %d\n",q.name,element.fd);
+				userList = add(userList,element);
+			 	print_list(userList);				
 			break;
-			case 1: //Inserting a new article
+			case 1: // Inserting a new article
 				printf("The article to insert is called %s and costs %d\n",q.name,q.value);
 				puts(" ");
+				article articleToI;
+				articleToI.price = q.value;
+				articleToI.accesses=0;	
+				articleToI.ref = ftell(strings);
+				
+				fseek(strings,ftell(strings),SEEK_CUR);
+				printf("ref:%d\n",articleToI.ref);
+				fwrite(q.name,1,strlen(q.name),strings);
+				printf("after:%d\n",(int) ftell(strings));
+				fwrite(&articleToI,sizeof(articleToI),1,artigos);
+				char rep[20];
+				sprintf(rep,"%d",articleToI.ref);
+				write(getPipe(userList,q.pid),rep,sizeof(rep));
+				//write(getPipe(userList,q.pid),"Server",sizeof("Server"));
 			break;
-			case 2:
+			case 2: // Name changing
 				printf("The article who will have it's name changed has as code %d and will be called %s\n",q.code,q.name);
 				puts(" ");
+				fseek(artigos,q.code*sizeof(struct article),SEEK_SET);
+				int location = ftell(strings);
+				fwrite(&location,sizeof(int),1,artigos);
+				fwrite(q.name,1,strlen(q.name),strings);
 			break;
-			case 3:
+			case 3: // Price changing
 				printf("The article who will have it's price changed has as code  %d and will have it's price changed to %d\n",q.code,q.value);
 				puts(" ");
+				fseek(artigos,q.code*sizeof(struct article)+sizeof(int),SEEK_SET);
+				int value = q.value;
+				fwrite(&value,sizeof(int),1,artigos);
 			break;
-
-		}
-		/*
-		printf("q->pid: %d\nq->type: %d\nq->operation %d\nq->code %d\nq->name %s\n",q.pid,q.type,q.operation,q.code,q.name);
-		printf("size:%d\n",(int) sizeof(q));
-		kill(q.pid, SIGUSR2);
-		*/
-	}
-
-	/*	
-	while (fgets(buf, 1024, tubo)) {
-		printf("received: %s\n",buf);
-		switch(buf[0]){
-			case 'i':
-				printf("strlen:%d\n", (int) strlen(buf));
-				char* token = strtok(buf," ");
-				char** toI = malloc(3*sizeof(char*));
-				int i = 0;
-				while(token!=NULL){
-					toI[i] = strdup(token);
-					printf("tok:%s\n",toI[i]);
-					i++;
-					token = strtok(NULL," ");
-				}
-				
-				fprintf(strings,"%d %s %s",nextCode,toI[1],toI[2]);
-				fprintf(artigos,"%d %d\n",nextCode,nextRef);
-				printf("Código inserido: %d\n",nextCode);
-				i--;
-				nextCode++;
-				nextRef++;
-
-				while(i>=0) free(toI[i--]);
-				free(toI);
-				free(token);
-				rewind(artigos);
-				rewind(strings);
-			break;
-			case 'n':;
-				int r;
-				r = buf[2] - '0';
-				printf("O n: %d\n",r);
-				int codigo, referencia = -1;
-				while (fscanf(artigos,"%d %d\n", &codigo, &referencia)!=EOF) if (codigo==r) break;
-				if (referencia != -1) {
-					char* toChange = malloc(1024*sizeof(char));
-					int code, ref, count = 0;
-					rewind(strings);
-					//while ((n = fscanf(strings,"%d %s %d\n", &code, toChange, &ref))==3) printf("n %d apanhado: %d %s %d\n",n,code,toChange,ref);
-					while(fscanf(strings,"%d %s %d\n", &code, toChange, &ref)==3) {
-							printf("count: %d referencia: %d\n", count, referencia);
-							printf("apanhado: %d %s %d\n",code,toChange,ref);
-						    if (count == referencia) {
-						    	fprintf(strings,"%d %s %d\n",code,"ISTO NAO E LIMONADA",ref);
-						    	printf("Inserido: %d %s %d\n",code,toChange,ref);
-					    }
-					    else count++;
-					   	memset(toChange,0,1024);
-					}
-					while (fgets(toChange,1024, file)!= NULL){
-
-					}
-					
-					free(toChange);
-				}
-				else break;
-				rewind(strings);
-				rewind(artigos);
-			break;
-			case 'p':
+			case 6: // User disconnecting
+				printf("Case 6\n");
+				sleep(2);
+				kill(q.pid, SIGUSR1);
+				close(getPipe(userList,q.pid));
+				removeN(userList,q.pid);
+				puts("");
 			break;
 		}
-		memset(buf,0,1024);
 	}
-	free(buf);
-	*/
-	
+
+	puts("------------------------------------");
+	fseek(artigos,0,SEEK_SET);
+	struct article *a2 = malloc(sizeof(struct article));
+	while(fread(a2,sizeof(struct article),1,artigos)) printf("a1.ref=%d, a1.price=%d, a1.accesses=%d\n",a2->ref,a2->price,a2->accesses);
 	close(pipe);
+	puts(" ");
 	fclose(artigos);
 	fclose(strings);
 	unlink("pipe");
+	print_list(userList);
+ 	userList = free_list(userList);	
+    
+    clock_t CPU_time_2 = clock();
+    clock_t time_3 = (double) CPU_time_2 - CPU_time_1;
+    printf("CPU end time is : %ld (s)\n", time_3/CLOCKS_PER_SEC);
+
 	return 0;
 }

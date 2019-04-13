@@ -5,26 +5,7 @@
 #include <string.h>
 #include <sys/stat.h> 
 #include <sys/types.h> 
-
-struct article {
-	int ref;
-	int price;
-	int accesses;
-};
-
-struct stock {
-	int amount;
-};
-
-struct strings {
-	char* nome;
-};
-
-struct sale {
-	int code;
-	int quantity;
-	int payment;
-};
+#include "structures.h"
 
 int main(int argc, char const *argv[]) {
 	
@@ -41,7 +22,7 @@ int main(int argc, char const *argv[]) {
 
 	fclose(teste);
 	*/
-
+	/*
 	FILE* coming = fopen("test","r");
 
 	struct article *a2 = malloc(sizeof(struct article));
@@ -58,6 +39,31 @@ int main(int argc, char const *argv[]) {
 	printf("sizeof(struct sale): %ld\n", sizeof(struct sale));
 	
 	fclose(coming);
-	
+	*/
+
+	/*
+	FILE* coming = fopen("ARTIGOS.txt","r");
+
+	struct article *a2 = malloc(sizeof(struct article));
+
+	fseek(coming,3*sizeof(struct article),SEEK_SET);
+
+	fread(a2,sizeof(struct article),1,coming);
+
+	printf("a1.ref=%d, a1.price=%d, a1.accesses=%d\n",a2->ref,a2->price,a2->accesses);
+
+	fclose(coming);
+	*/
+
+	FILE* coming = fopen("ARTIGOS","r");
+
+	struct article *a2 = malloc(sizeof(struct article));
+
+	while(fread(a2,sizeof(struct article),1,coming)){
+		printf("a1.ref=%d, a1.price=%d, a1.accesses=%d\n",a2->ref,a2->price,a2->accesses);
+	}
+
+	fclose(coming);
+
 	return 0;
 }

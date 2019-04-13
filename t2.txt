@@ -1,0 +1,6 @@
+i algodao 1
+i agulhas 5
+i oculos 100
+i bolachas 3
+i lapis 1
+i caderno 2
