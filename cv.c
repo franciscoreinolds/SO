@@ -67,8 +67,11 @@ int main(int argc, char const *argv[]){
 				case1.operation = 4;
 				case1.code = atoi(info[0]);
 				case1.value = -1;
+				printf("Escreveu\n");
 				write(pipe,&case1,sizeof(case1));
+				printf("Wait what\n");
 				stockAndPrice s1;
+				printf("A espera de input");
 				read(serverInput,&s1,sizeof(s1));
 				printf("stock: %d, price: %d\n",s1.stock,s1.price);				
 			break;
