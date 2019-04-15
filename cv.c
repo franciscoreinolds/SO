@@ -27,7 +27,7 @@ int main(int argc, char const *argv[]){
 
    	query q;
    	q.pid = mypid;
-   	q.type = 0; //Article Maintenance
+   	q.type = 1; //Client
    	q.operation = 0; // Syncing
    	q.code = -1;
    	q.value=0;
@@ -48,79 +48,58 @@ int main(int argc, char const *argv[]){
 	char* buf = malloc(1024*sizeof(char));
 
 	while (fgets(buf, 1024, stdin)) {
+		int n;
+		if (strchr(buf,' ')) n = 2;	
+		else n = 1;
+		char** info = malloc(n*sizeof(char*));
 		char *token = strtok(buf," ");
-		char** info = malloc(3*sizeof(char*));
+		
 		int it;
-
 		for(it=0;token!=NULL;token = strtok(NULL," "),it++) info[it] = strdup(token);
+		for(it=0;it<n;it++) printf("info[%d]:%s\n",it,info[it]);
 
-		switch(info[0][0]){
-			case 'i':;
-				/*
-				printf("Case i\n");
-				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
-				*/
-				query caseI;
-				memset(&caseI.name,0,128);
-				caseI.pid = mypid;
-				caseI.type = 0;
-				caseI.operation = 1;
-				caseI.code = -1;
-				strcpy(caseI.name,info[1]);
-				caseI.value = atoi(info[2]);
-				write(pipe,&caseI,sizeof(caseI));
-				char* res = malloc(1024*sizeof(char));
-				read(serverInput,res,1024);
-				printf("buf: %s\n",res);
-				fflush(stdout);
+		switch(n){
+			case 1:;
+				query case1;
+				memset(&case1.name,0,128);
+				case1.pid = mypid;
+				case1.type = 1;
+				case1.operation = 4;
+				case1.code = atoi(info[0]);
+				case1.value = -1;
+				write(pipe,&case1,sizeof(case1));
+				stockAndPrice s1;
+				read(serverInput,&s1,sizeof(s1));
+				printf("stock: %d, price: %d\n",s1.stock,s1.price);				
 			break;
-			case 'n':;
-				/*
-				printf("Case n\n");
-				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
-				*/
-				query caseN;
-				memset(&caseN.name,0,128);
-				caseN.pid = mypid;
-				caseN.type = 0;
-				caseN.operation = 2;
-				caseN.code = atoi(info[1]);
-				strcpy(caseN.name,info[2]);
-				caseN.value = 0;
-				write(pipe,&caseN,sizeof(caseN));
+			case 2:;
+				query case2;
+				memset(&case2.name,0,128);
+				case2.pid = mypid;
+				case2.type = 1;
+				case2.operation = 5;
+				case2.code = atoi(info[0]);
+				case2.value = atoi(info[1]);
+				write(pipe,&case2,sizeof(case2));			
+				int res2;
+				read(serverInput,&res2,sizeof(int));
+				printf("stock: %d\n",res2);				
 			break;
-			case 'p':;
-				/*
-				printf("Case p\n");
-				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
-				*/
-				query caseP;
-				memset(&caseP.name,0,128);
-				caseP.pid = mypid;
-				caseP.type = 0;
-				caseP.operation = 3;
-				caseP.code = atoi(info[1]);
-				caseP.value = atoi(info[2]);
-				write(pipe,&caseP,sizeof(caseP));					
-			break;
-		}	
+		}
 
-		printf("pipe:%d\n",pipe);
-
-		for(it=0;it<3;it++) free(info[it]);
-
+		for(it=0;it<n;it++) free(info[it]);
 		free(info);
 
-		//sleep(1);
-
 	}
+
 	/*
 	int n;
 	while((n = read(serverInput,buf,1024))>0) write(1,buf,n);
-	*/
 	close(serverInput);
+	*/
+
 	free(buf);
-	
+	/*	
    	query q2;
    	q2.pid = mypid;
    	q2.type = 0; //Article Maintenance
@@ -133,5 +112,6 @@ int main(int argc, char const *argv[]){
 	printf("Beginning the wait..\n");
 	pause();
 	printf("Received signal\n");
+	*/
 	return 0;
 }
