@@ -38,20 +38,19 @@ int main(int argc, char const *argv[]){
 
 	if(access("ARTIGOS",F_OK)!= -1) {
 		artigos = fopen("ARTIGOS","rb+");
-		strings = fopen("STRINGS","rb+");
+		strings = fopen("STRINGS","ab+");
 		stocks = fopen("STOCKS","rb+");
-		vendas = fopen("VENDAS","rb+");
+		vendas = fopen("VENDAS","ab+");
 		fseek(artigos,0,SEEK_END);
 		nextCode = (ftell(artigos)/sizeof(article))+1;
 	}
 	else{
-		artigos = fopen("ARTIGOS","ab+");
+		artigos = fopen("ARTIGOS","wb+");
 		strings = fopen("STRINGS","ab+");
-		stocks = fopen("STOCKS","ab+");
+		stocks = fopen("STOCKS","wb+");
 		vendas = fopen("VENDAS","ab+");		
 	}
 
-	puts(" ");
 	int n;
 	while((n=read(pipe,&q,sizeof(q)))>0){
 		switch(q.operation){
@@ -61,53 +60,44 @@ int main(int argc, char const *argv[]){
 				strcpy(element.namedPipe,q.name);
 				element.type = q.type;
 				element.fd = open(q.name,O_RDWR);
-				printf("ELEMENT FD: %d e %s\n",element.fd,q.name);
 				if(element.fd==-1) kill(q.pid,SIGINT);
 				else userList = add(userList,element);
 			break;
-			case 1: // Inserting a new article
-				printf("The article to insert is called %s and costs %d\n",q.name,q.value);
-				puts(" ");
+			case 1:; // Inserting a new article
 				article articleToI;
 				articleToI.price = q.value;
-				articleToI.accesses=0;	
+				articleToI.accesses=0;
+
+				fseek(strings,0,SEEK_END);
 				articleToI.ref = ftell(strings);
-				
-				fseek(strings,articleToI.ref,SEEK_CUR);
 				fwrite(q.name,1,strlen(q.name),strings);
 				
+				fseek(artigos,0,SEEK_END);
 				fwrite(&articleToI,sizeof(articleToI),1,artigos);
 
 				fseek(stocks,nextCode*sizeof(int),SEEK_SET);
 				fwrite(&articleToI.accesses,sizeof(int),1,stocks);
-				
 				char rep[20];
 				sprintf(rep,"%d",nextCode);
 				write(getPipe(userList,q.pid),rep,sizeof(rep));
 				nextCode++;
 			break;
 			case 2: // Name changing
-				printf("The article who will have it's name changed has as code %d and will be called %s\n",q.code,q.name);
-				puts(" ");
 				fseek(artigos,q.code*sizeof(struct article),SEEK_SET);
 				int location = ftell(strings);
 				fwrite(&location,sizeof(int),1,artigos);
 				fwrite(q.name,1,strlen(q.name),strings);
 			break;
 			case 3: // Price changing
-				printf("The article who will have it's price changed has as code  %d and will have it's price changed to %d\n",q.code,q.value);
-				puts(" ");
 				fseek(artigos,q.code*sizeof(struct article)+sizeof(int),SEEK_SET);
-				int value = q.value;
-				fwrite(&value,sizeof(int),1,artigos);
+				fwrite(&q.value,sizeof(int),1,artigos);
 				int flag3 = 0;
-				
+
 				for(int it3 = 0 ; it3 < cachedArticles && !flag3 ; it3++) {
 					if(cache[it3].code == q.code) {
 						flag3 = 1;
 						cache[it3].price = q.value;
 						cache[it3].accesses++;
-						//fwrite(&cache[it3].accesses,sizeof(int),1,artigos);
 					}
 				}
 
@@ -123,31 +113,20 @@ int main(int argc, char const *argv[]){
 				fread(&stk3,sizeof(int),1,stocks);
 				
 				if(!flag3) {
+					fseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);					
 					int acc3;
 					fread(&acc3,sizeof(int),1,artigos);
 					acc3++;
-					fseek(artigos,-sizeof(int),SEEK_CUR);
-					fwrite(&acc3,sizeof(int),1,artigos);
+					cached c;
+					c.code = q.code;
+					c.price = q.value;
+					c.stock = stk3;
+					c.accesses = acc3;
 					if (cachedArticles==maxCache) { // Updating cache
-						if (acc3 >= cache[0].accesses) {
-							cached c;
-							c.code = q.code;
-							c.price = value;
-							c.stock = stk3;
-							c.accesses = acc3;
-							cache[0] = c;
-							qsort (cache, cachedArticles, sizeof(cached), compare);
-						}
+						if (acc3 >= cache[0].accesses) cache[0] = c;
 					}	
-					else {
-						cached c;
-						c.code = q.code;
-						c.price = value;
-						c.stock = stk3;
-						c.accesses = acc3;
-						cache[cachedArticles++] = c;						
-						qsort (cache, maxCache, sizeof(cached), compare);
-					}
+					else cache[cachedArticles++] = c;
+					qsort (cache, maxCache, sizeof(cached), compare);
 				}
 			break;
 			case 4:; // Stock checking
@@ -159,7 +138,6 @@ int main(int argc, char const *argv[]){
 						s.stock = cache[it4].stock;
 						s.price = cache[it4].price;
 						cache[it4].accesses++;
-						printf("CASE4 FOUND it %d artigo tem code %d e %d accesses\n",it4,cache[it4].code,cache[it4].accesses);						
 						write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));
    						qsort (cache, cachedArticles, sizeof(cached), compare);
 						break;
@@ -172,24 +150,19 @@ int main(int argc, char const *argv[]){
 				int fileLimit4 = ftell(stocks);
 				fseek(stocks,q.code*sizeof(int),SEEK_SET); 
 				int stockLoc4 = ftell(stocks);
-				printf("stockLoc4 %d fileLimit4 %d\n", stockLoc4,fileLimit4);
 				if (stockLoc4 >= fileLimit4) flag4 = 1; // If code the User is looking for is Out of File
 
 				if(!flag4){ // Check if the item is in file
-					printf("CASE4: Checking if the item with code %d is in the file\n",q.code);	
-
 					fread(&s.stock,sizeof(int),1,stocks);
 					fseek(artigos,q.code*sizeof(struct article)+sizeof(int),SEEK_SET);
 					fread(&s.price,sizeof(int),1,artigos);
 
 					int accesses4;
 					fread(&accesses4, sizeof(int), 1, artigos);
-					printf("price: %d, accesses4 before increment: %d\n",s.price, accesses4);
 					accesses4++;
 
 					fseek(artigos,-sizeof(int),SEEK_CUR);
 					fwrite(&accesses4,sizeof(int),1,artigos);
-					printf("Item with code %d has %d accesses\n", q.code,accesses4);
 					
 					if (cachedArticles==maxCache) { // Updating cache
 						if (accesses4 >= cache[0].accesses) {
@@ -219,63 +192,62 @@ int main(int argc, char const *argv[]){
 					write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));					
 				}
 				else{ // Item doesn't exist
-					printf("Item with code %d DOES NOT EXIST\n",q.code);
 					s.stock = -1;
 					s.price = -1;
 					write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));
-					printf("Enviou para %d\n",getPipe(userList,q.pid));
 				}
 				puts(" ");				
 			break;
 			case 5:; // Stock movement
-				printf("The client with pid %d wants to move %d units of article %d\n",q.pid,q.value,q.code);
 				int flag5 = 0;
-				int paidAmount = 0;
 				int stock;
 				int price;
-
+				sale s5;
+				s5.code = q.code;
+				s5.quantity = q.value;
 				for(int it4 = 0 ; it4 < cachedArticles ; it4++) { // Check if the item is in cache
 					if(cache[it4].code==q.code) {
 						flag5 = 1;
 						cache[it4].stock -= (-1*q.value);
-						paidAmount += (cache[it4].price*(-1*q.value));
 						cache[it4].accesses++;
 						write(getPipe(userList,q.pid),&cache[it4].stock,sizeof(int));
-						sale s;
-						s.code = q.code;
-						s.quantity = q.value;
-						s.paidAmount = cache[it4].price*q.value;
-						printf("Sale: Code %d quantity %d paidAmount %d\n",s.code,s.quantity,s.paidAmount);
-						printf("CASE 5: Artigo de code %d tem %d accesses\n",cache[it4].code,cache[it4].accesses);
+						s5.paidAmount = cache[it4].price*q.value;
+
+						fseek(vendas,0,SEEK_END);
+						fwrite(&s5,sizeof(sale),1,vendas);
 						break;
 					}
 				}
 
-				printf("Oi\n");
+				if (flag5) break;
 
 				fseek(stocks,0,SEEK_END);
 				int fileLimit5 = ftell(stocks);
 				fseek(stocks,q.code*sizeof(int),SEEK_SET); 
 				int stockLoc5 = ftell(stocks);
-				printf("stockLoc5 %d fileLimit5 %d\n", stockLoc5,fileLimit5);
 				if (stockLoc5 >= fileLimit5) flag5 = 1;
-
-				printf("Breakou?\n");
 
 				if(!flag5){ // Check if the item is in the file
 					fread(&stock,sizeof(int),1,stocks);
-					
+					stock -= (-1*q.value);
+
 					fseek(artigos,q.code*sizeof(struct article)+sizeof(int),SEEK_SET);
 					fread(&price,sizeof(int),1,artigos);
 
+					s5.paidAmount = price*(-1*q.value);
+				
+					fseek(vendas,0,SEEK_END);
+					fwrite(&s5,sizeof(sale),1,vendas);
+
+					//printf("SALE: Code %d quantity %d paidAmount %d\n",s5.code,s5.quantity,s5.paidAmount);
+
 					int acc5;
 					fread(&acc5, sizeof(int), 1, artigos);
-					printf("price: %d, accesses4 before increment: %d\n",price, acc5);
 					acc5++;
 
 					fseek(artigos,-sizeof(int),SEEK_CUR);
 					fwrite(&acc5,sizeof(int),1,artigos);
-					printf("Item with code %d has %d accesses\n", q.code,acc5);
+					//printf("Item with code %d has %d accesses\n", q.code,acc5);
 					
 					write(getPipe(userList,q.pid),&stock,sizeof(int));
 					cached c;
@@ -292,13 +264,17 @@ int main(int argc, char const *argv[]){
    							fseek(artigos,repl.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
    							fwrite(&repl.accesses,sizeof(int),1,artigos);
 
-   							printf("repl.accesses %d repl.code %d\n",repl.accesses,repl.code);
+   							//printf("repl.accesses %d repl.code %d\n",repl.accesses,repl.code);
    							fseek(stocks,repl.code*sizeof(int),SEEK_SET);
-   							printf("Replaced written to %d\n",(int) ftell(stocks));  							
-   							fwrite(&repl.stock,sizeof(int),1,stocks); 
+   							//printf("Replaced written to %d\n",(int) ftell(stocks));  							
+   							fwrite(&repl.stock,sizeof(int),1,stocks);
+   							//printf("CASE5: Wrote %d to stocks\n",repl.stock);
 						}
 					}	
-					else cache[cachedArticles++] = c; 
+					else {
+						//printf("Added to cache article %d with %d stock\n",c.code,c.stock);
+						cache[cachedArticles++] = c; 
+					}
 					qsort (cache, cachedArticles, sizeof(cached), compare);					
 				}
 				else{ // Item doesn't exist
@@ -307,34 +283,41 @@ int main(int argc, char const *argv[]){
 					s.price = -1;
 					write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));
 				}				
-				printf("Saiu\n");
 				puts(" ");				
 			break;
 			case 6: // User disconnecting
-				printf("Case 6\n");
 				kill(q.pid, SIGUSR1);
 				close(getPipe(userList,q.pid));
 				removeN(userList,q.pid);
 				puts("");
 			break;
 		}
-		sleep(1);
+		//sleep(1);
 	}
 
 	for (int k = 0 ; k < cachedArticles ; k++) {
-		printf("cache[%d].code: %d com %d accesses que custa %d\n", k , cache[k].code, cache[k].accesses, cache[k].price);		
 		fseek(artigos,cache[k].code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 		fwrite(&cache[k].accesses,sizeof(int),1,artigos);
 		fseek(stocks,cache[k].code*sizeof(int),SEEK_SET);
 		fwrite(&cache[k].stock,sizeof(int),1,stocks);
 	}
 
-	puts("------------------------------------");
 	fseek(artigos,0,SEEK_SET);
 	struct article *a2 = malloc(sizeof(struct article));
-	while(fread(a2,sizeof(struct article),1,artigos)) printf("a1.ref=%d, a1.price=%d, a1.accesses=%d\n",a2->ref,a2->price,a2->accesses);
+	for (int k = 0;fread(a2,sizeof(struct article),1,artigos);k++){
+		int stock;
+		fseek(stocks,k*sizeof(int),SEEK_SET);
+		fread(&stock,sizeof(int),1,stocks);
+		printf("CODE %d: a1.ref=%d\ta1.price=%d\ta1.accesses=%d\tand final stock %d\n",k,a2->ref,a2->price,a2->accesses,stock);
+	}
+
+	/*
+	struct sale sv;
+	fseek(vendas,0,SEEK_SET);
+	while(fread(&sv,sizeof(sale),1,vendas)>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
+	*/
+	
 	close(pipe);
-	puts(" ");
 	
 	fclose(artigos);
 	fclose(stocks);

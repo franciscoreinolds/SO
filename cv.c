@@ -34,16 +34,16 @@ int main(int argc, char const *argv[]){
    	memset(&q.name,0,128);
    	sprintf(fifo,"pipe%d",getpid());
 	strcpy(q.name,fifo);
-	printf("fifo: %s\n",fifo);
 	write(pipe,&q,sizeof(q));
 
    	mkfifo(fifo,0644);
    	int serverInput = open(fifo,O_RDWR);
    	if(serverInput!=-1) {
-   		printf("serverInput:%d\n",serverInput);
    		//dup2(serverInput,1);
    		//close(serverInput);
    	}
+
+   	sleep(1);
 
 	char* buf = malloc(1024*sizeof(char));
 
