@@ -62,25 +62,8 @@ typedef struct stockAndPrice{
 
 void init(NODE** head);
 NODE* add(NODE* node, user toI);
-void print_list(NODE* head);
-void remove_node(NODE* head);
 void removeN(NODE* head, int pid);
 NODE *free_list(NODE *head);
 int getPipe(NODE*head, int pid);
-
-
-#define StackItem struct article
-
-typedef struct Stack Stack;
-
-Stack *stackCreate();
-void stackDestroy(Stack *stack);
-void stackClean(Stack *stack);
-int stackIsEmpty(Stack *stack);
-size_t stackSize(Stack *stack);
-StackItem stackTop(Stack *stack);
-int stackPush(Stack *stack, StackItem item);
-StackItem stackPop(Stack *stack);
-StackItem getItem(Stack *stack, int code);
 
 #endif

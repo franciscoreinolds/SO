@@ -67,11 +67,8 @@ int main(int argc, char const *argv[]){
 				case1.operation = 4;
 				case1.code = atoi(info[0]);
 				case1.value = -1;
-				printf("Escreveu\n");
 				write(pipe,&case1,sizeof(case1));
-				printf("Wait what\n");
 				stockAndPrice s1;
-				printf("A espera de input");
 				read(serverInput,&s1,sizeof(s1));
 				printf("stock: %d, price: %d\n",s1.stock,s1.price);				
 			break;
@@ -95,26 +92,15 @@ int main(int argc, char const *argv[]){
 
 	}
 
-	/*
-	int n;
-	while((n = read(serverInput,buf,1024))>0) write(1,buf,n);
-	close(serverInput);
-	*/
+   	query e;
+   	e.pid = mypid;
+   	e.type = 1; //Client
+   	e.operation = 6; // Syncing
+   	e.code = -1;
+   	e.value=0;
+   	memset(&e.name,0,128);
+	write(pipe,&e,sizeof(e));
 
 	free(buf);
-	/*	
-   	query q2;
-   	q2.pid = mypid;
-   	q2.type = 0; //Article Maintenance
-   	q2.operation = 6; // Disconnecting
-   	q2.code = -1;
-   	q2.value = 0;
-   	memset(&q2.name,0,128);
-	write(pipe,&q2,sizeof(q2));
-	close(pipe);
-	printf("Beginning the wait..\n");
-	pause();
-	printf("Received signal\n");
-	*/
 	return 0;
 }

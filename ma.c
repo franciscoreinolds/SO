@@ -56,10 +56,6 @@ int main(int argc, char const *argv[]){
 
 		switch(info[0][0]){
 			case 'i':;
-				/*
-				printf("Case i\n");
-				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
-				*/
 				query caseI;
 				memset(&caseI.name,0,128);
 				caseI.pid = mypid;
@@ -71,14 +67,10 @@ int main(int argc, char const *argv[]){
 				write(pipe,&caseI,sizeof(caseI));
 				char* res = malloc(1024*sizeof(char));
 				read(serverInput,res,1024);
-				printf("buf: %s\n",res);
+				printf("Code: %s\n",res);
 				fflush(stdout);
 			break;
 			case 'n':;
-				/*
-				printf("Case n\n");
-				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
-				*/
 				query caseN;
 				memset(&caseN.name,0,128);
 				caseN.pid = mypid;
@@ -90,10 +82,6 @@ int main(int argc, char const *argv[]){
 				write(pipe,&caseN,sizeof(caseN));
 			break;
 			case 'p':;
-				/*
-				printf("Case p\n");
-				for(it=0;it<3;it++) printf("info[%d]:%s\n",it,info[it]);
-				*/
 				query caseP;
 				memset(&caseP.name,0,128);
 				caseP.pid = mypid;
@@ -105,8 +93,6 @@ int main(int argc, char const *argv[]){
 			break;
 		}	
 
-		printf("pipe:%d\n",pipe);
-
 		for(it=0;it<3;it++) free(info[it]);
 
 		free(info);
@@ -114,10 +100,7 @@ int main(int argc, char const *argv[]){
 		//sleep(1);
 
 	}
-	/*
-	int n;
-	while((n = read(serverInput,buf,1024))>0) write(1,buf,n);
-	*/
+
 	close(serverInput);
 	free(buf);
 	

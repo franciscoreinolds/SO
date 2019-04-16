@@ -1,6 +1,7 @@
 #include <stdio.h> 
 #include <stdlib.h> 
-#include <limits.h> 
+#include <limits.h>
+#include <unistd.h>
 #include "structures.h"
 
 void init(NODE** head) {
@@ -18,12 +19,6 @@ NODE* add(NODE* node, user toI) {
     return node;
 }
 
-void print_list(NODE* head) {
-    NODE * temp;
-    for (temp = head; temp; temp = temp->next)
-        printf("Pid: %d\n", temp->data.pid);
-}
-
 void removeN(NODE* head, int pid){
     NODE* temp = (NODE*) malloc(sizeof (NODE));
     NODE* prev;
@@ -35,6 +30,7 @@ void removeN(NODE* head, int pid){
     }
 
     if (temp != NULL && temp->data.pid == pid) { 
+        unlink(temp->data.namedPipe);
         head = temp->next;
         free(temp); 
         return; 
@@ -46,19 +42,11 @@ void removeN(NODE* head, int pid){
     } 
   
     if (temp == NULL) return; 
-  
+
+    unlink(temp->data.namedPipe);
+
     prev->next = temp->next; 
   
-    free(temp);
-}
-
-void remove_node(NODE* head) {
-    NODE* temp = (NODE*) malloc(sizeof (NODE));
-    if (temp == NULL) {
-        exit(EXIT_FAILURE); // no memory available
-    }
-    temp = head->next;
-    head->next = head->next->next;
     free(temp);
 }
 
