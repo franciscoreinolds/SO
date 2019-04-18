@@ -20,7 +20,7 @@ NODE* add(NODE* node, user toI) {
 }
 
 void removeN(NODE* head, int pid){
-    NODE* temp = (NODE*) malloc(sizeof (NODE));
+    NODE* temp;
     NODE* prev;
     
     temp = head;

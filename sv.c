@@ -16,6 +16,8 @@
 int cachedArticles = 0;
 int clientN = 0;
 int nextCode = 0;
+int stringsSize = 0;
+int waste = 0;
 cached cache[maxCache];
 NODE* userList;
 query q;
@@ -23,6 +25,66 @@ FILE* strings;
 FILE* artigos;
 FILE* stocks;
 FILE* vendas;
+
+void articleReader(){
+	fseek(artigos,0,SEEK_SET);
+	struct article a2;
+	for (int k = 0;fread(&a2,sizeof(struct article),1,artigos);k++){
+		int stock;
+		fseek(stocks,k*sizeof(int),SEEK_SET);
+		fread(&stock,sizeof(int),1,stocks);
+		printf("CODE %d: a1.refI=%d\ta1.refF=%d\ta1.price=%d\ta1.accesses=%d\tand final stock %d\n",k,a2.refI,a2.refF,a2.price,a2.accesses,stock);
+		char name[a2.refF-a2.refI+1];
+		fseek(strings,a2.refI,SEEK_SET);
+		fread(&name,a2.refF-a2.refI,1,strings);
+		name[a2.refF-a2.refI] = '\0';
+		printf("The product with code %d is called %s\n",k,name);
+	}	
+}
+
+void cacheSaving(){
+	for (int k = 0 ; k < cachedArticles ; k++) {
+		fseek(artigos,cache[k].code*sizeof(struct article)+3*sizeof(int),SEEK_SET);
+		fwrite(&cache[k].accesses,sizeof(int),1,artigos);
+		fseek(stocks,cache[k].code*sizeof(int),SEEK_SET);
+		fwrite(&cache[k].stock,sizeof(int),1,stocks);
+	}
+}
+
+void fileCompressor(){
+	printf("HELLO FILE COMPRESSOR!\n");
+	FILE* newStrings = fopen("newStrings","ab+");
+	cacheSaving();
+	int refI, refF;
+	fseek(artigos,0,SEEK_SET);
+	struct article a;
+	fseek(artigos,0,SEEK_SET);
+	for (int k = 0 ; fread(&a,sizeof(struct article),1,artigos) ; k++){
+		char name[a.refF-a.refI+1];
+		memset(name,0,a.refF-a.refI+1);		
+		fseek(strings,a.refI,SEEK_SET);
+		fread(&name,a.refF-a.refI+1,1,strings);
+		refI = ftell(newStrings);
+		fwrite(&name,sizeof(unsigned short),strlen(name),newStrings);
+		refF = ftell(newStrings)-1;
+		fseek(artigos,k*sizeof(struct article),SEEK_SET);
+		fwrite(&refI,sizeof(int),1,artigos);
+		fwrite(&refF,sizeof(int),1,artigos);
+		memset(name,0,a.refF-a.refI+1);
+		fseek(artigos,2*sizeof(int),SEEK_CUR);
+	}
+	fseek(strings,0,SEEK_END);
+	fseek(newStrings,0,SEEK_END);
+	printf("Big file %d Compressed file %d\n",(int) ftell(strings),(int) ftell(newStrings));
+	fclose(strings);
+	fclose(newStrings);
+	unlink("STRINGS");
+	rename("newStrings","STRINGS");
+	strings = fopen("STRINGS","ab+");
+	waste = 0;
+	fseek(strings,0,SEEK_END);
+	stringsSize = (int) ftell(strings);
+}
 
 int compare (const void * a, const void * b){
 	const cached *a1 = (const cached *)a;
@@ -69,27 +131,43 @@ int main(int argc, char const *argv[]){
 				articleToI.accesses=0;
 
 				fseek(strings,0,SEEK_END);
-				articleToI.ref = ftell(strings);
-				fwrite(q.name,1,strlen(q.name),strings);
-				
+				articleToI.refI = ftell(strings);
+
+				fwrite(&q.name,sizeof(unsigned short),strlen(q.name),strings);
+				articleToI.refF = ftell(strings)-1;
+
+				stringsSize += (articleToI.refF-articleToI.refI+1);
+				printf("stringsSize: %d\n",stringsSize);
 				fseek(artigos,0,SEEK_END);
 				fwrite(&articleToI,sizeof(articleToI),1,artigos);
 
 				fseek(stocks,nextCode*sizeof(int),SEEK_SET);
 				fwrite(&articleToI.accesses,sizeof(int),1,stocks);
 				char rep[20];
+				memset(rep,0,20);
 				sprintf(rep,"%d",nextCode);
 				write(getPipe(userList,q.pid),rep,sizeof(rep));
 				nextCode++;
 			break;
 			case 2: // Name changing
 				fseek(artigos,q.code*sizeof(struct article),SEEK_SET);
-				int location = ftell(strings);
-				fwrite(&location,sizeof(int),1,artigos);
-				fwrite(q.name,1,strlen(q.name),strings);
+				int repI, repF;
+				fread(&repI,sizeof(int),1,artigos);
+				fread(&repF,sizeof(int),1,artigos);
+				fseek(artigos,-2*sizeof(int),SEEK_CUR);
+				waste += (repF-repI+1);
+				int stringI = ftell(strings);
+				fwrite(&stringI,sizeof(int),1,artigos);
+				fwrite(&q.name,sizeof(unsigned short),strlen(q.name),strings);
+				int stringF = ftell(strings)-1;
+				fwrite(&stringF,sizeof(int),1,artigos);
+				stringsSize += (stringF-stringI+1);
+				printf("stringsSize: %d and waste %d\n",stringsSize,waste);
+				printf("waste percentage: %f\n", (waste*100.0/stringsSize));
+				if ((waste*100.0/stringsSize) >= 20.0) fileCompressor();
 			break;
 			case 3: // Price changing
-				fseek(artigos,q.code*sizeof(struct article)+sizeof(int),SEEK_SET);
+				fseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 				fwrite(&q.value,sizeof(int),1,artigos);
 				int flag3 = 0;
 
@@ -114,7 +192,7 @@ int main(int argc, char const *argv[]){
 				fread(&stk3,sizeof(int),1,stocks);
 				
 				if(!flag3) {
-					fseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);					
+					fseek(artigos,q.code*sizeof(struct article)+3*sizeof(int),SEEK_SET);					
 					int acc3;
 					fread(&acc3,sizeof(int),1,artigos);
 					acc3++;
@@ -155,7 +233,7 @@ int main(int argc, char const *argv[]){
 
 				if(!flag4){ // Check if the item is in file
 					fread(&s.stock,sizeof(int),1,stocks);
-					fseek(artigos,q.code*sizeof(struct article)+sizeof(int),SEEK_SET);
+					fseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 					fread(&s.price,sizeof(int),1,artigos);
 
 					int accesses4;
@@ -175,7 +253,7 @@ int main(int argc, char const *argv[]){
 						if (accesses4 >= cache[0].accesses) {
 							cached repl = cache[0];
 							cache[0] = c;
-   							fseek(artigos,repl.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
+   							fseek(artigos,repl.code*sizeof(struct article)+3*sizeof(int),SEEK_SET);
    							fwrite(&repl.accesses,sizeof(int),1,artigos);
    							fseek(stocks,repl.code*sizeof(int),SEEK_SET);
    							fwrite(&repl.stock,sizeof(int),1,stocks);
@@ -227,7 +305,7 @@ int main(int argc, char const *argv[]){
 					fseek(stocks,-sizeof(int),SEEK_CUR);
 					fwrite(&stock,sizeof(int),1,stocks);
 
-					fseek(artigos,q.code*sizeof(struct article)+sizeof(int),SEEK_SET);
+					fseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 					fread(&price,sizeof(int),1,artigos);
 
 					s5.paidAmount = price*(-1*q.value);
@@ -258,7 +336,7 @@ int main(int argc, char const *argv[]){
 							cached repl = cache[0];
 							cache[0] = c;
 
-   							fseek(artigos,repl.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
+   							fseek(artigos,repl.code*sizeof(struct article)+3*sizeof(int),SEEK_SET);
    							fwrite(&repl.accesses,sizeof(int),1,artigos);
 
    							//printf("Article with code %d and %d accesses was replaced by article %d and %d accesses\n", repl.code, repl.accesses, c.code, c.accesses);
@@ -293,28 +371,17 @@ int main(int argc, char const *argv[]){
 		for (int k = 0 ; k < cachedArticles ; k++) printf("cache[%d]: Code %d Price %d Stock %d Accesses %d\n",k,cache[k].code,cache[k].price,cache[k].stock,cache[k].accesses);
 		puts(" ");
 		*/
+
 	}
 
-	for (int k = 0 ; k < cachedArticles ; k++) {
-		fseek(artigos,cache[k].code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
-		fwrite(&cache[k].accesses,sizeof(int),1,artigos);
-		fseek(stocks,cache[k].code*sizeof(int),SEEK_SET);
-		fwrite(&cache[k].stock,sizeof(int),1,stocks);
-	}
+	cacheSaving();
 
-	fseek(artigos,0,SEEK_SET);
-	struct article *a2 = malloc(sizeof(struct article));
-	for (int k = 0;fread(a2,sizeof(struct article),1,artigos);k++){
-		int stock;
-		fseek(stocks,k*sizeof(int),SEEK_SET);
-		fread(&stock,sizeof(int),1,stocks);
-		printf("CODE %d: a1.ref=%d\ta1.price=%d\ta1.accesses=%d\tand final stock %d\n",k,a2->ref,a2->price,a2->accesses,stock);
-	}
-
+	articleReader();
+	/*
 	struct sale sv;
 	fseek(vendas,0,SEEK_SET);
 	while(fread(&sv,sizeof(sale),1,vendas)>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
-
+	*/
 	close(pipe);
 	
 	fclose(artigos);
@@ -322,7 +389,6 @@ int main(int argc, char const *argv[]){
 	fclose(strings);
 	fclose(vendas);
 	unlink("pipe");
- 	userList = free_list(userList);	
     
     clock_t CPU_time_2 = clock();
     clock_t time_3 = (double) CPU_time_2 - CPU_time_1;

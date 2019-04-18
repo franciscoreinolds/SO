@@ -17,7 +17,8 @@ typedef struct reply {
 }reply;
 
 typedef struct article {
-	int ref;
+	int refI;
+	int refF;
 	int price;
 	int accesses;
 }article;
