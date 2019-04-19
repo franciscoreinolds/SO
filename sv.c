@@ -26,6 +26,29 @@ FILE* artigos;
 FILE* stocks;
 FILE* vendas;
 
+void aggregator(int s){
+	time_t rawtime;
+	struct tm* timeinfo;
+	time (&rawtime);
+	timeinfo = localtime (&rawtime);
+	char time[25];
+	sprintf(time,"%d-%d-%dT%d:%d:%d",timeinfo->tm_year+1900,timeinfo->tm_mon+1,timeinfo->tm_mday,timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
+	printf("time: %s\n",time);
+
+	alarm(1);
+    signal(SIGALRM, aggregator);
+}
+
+void signalInit(){
+    signal(SIGALRM, aggregator);
+    alarm(1);    
+}
+void display_message(int s) {
+
+	alarm(1);
+	signal(SIGALRM, display_message);
+}
+
 void articleReader(){
 	fseek(artigos,0,SEEK_SET);
 	struct article a2;
@@ -52,7 +75,6 @@ void cacheSaving(){
 }
 
 void fileCompressor(){
-	printf("HELLO FILE COMPRESSOR!\n");
 	FILE* newStrings = fopen("newStrings","ab+");
 	cacheSaving();
 	int refI, refF;
@@ -98,6 +120,8 @@ int main(int argc, char const *argv[]){
 	mkfifo("pipe",0666);
 	int pipe = open("pipe",O_RDONLY);
 
+	signalInit();
+
 	if(access("ARTIGOS",F_OK)!= -1) {
 		artigos = fopen("ARTIGOS","rb+");
 		strings = fopen("STRINGS","ab+");
@@ -137,7 +161,6 @@ int main(int argc, char const *argv[]){
 				articleToI.refF = ftell(strings)-1;
 
 				stringsSize += (articleToI.refF-articleToI.refI+1);
-				printf("stringsSize: %d\n",stringsSize);
 				fseek(artigos,0,SEEK_END);
 				fwrite(&articleToI,sizeof(articleToI),1,artigos);
 
@@ -375,13 +398,13 @@ int main(int argc, char const *argv[]){
 	}
 
 	cacheSaving();
-
+/*
 	articleReader();
-	/*
+	
 	struct sale sv;
 	fseek(vendas,0,SEEK_SET);
 	while(fread(&sv,sizeof(sale),1,vendas)>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
-	*/
+*/	
 	close(pipe);
 	
 	fclose(artigos);
@@ -392,7 +415,7 @@ int main(int argc, char const *argv[]){
     
     clock_t CPU_time_2 = clock();
     clock_t time_3 = (double) CPU_time_2 - CPU_time_1;
-    printf("CPU end time is : %ld (s)\n", time_3/CLOCKS_PER_SEC);
+    printf("CPU end time is : %ld (ms)\n", (time_3*1000)/CLOCKS_PER_SEC);
 
 	return 0;
 }

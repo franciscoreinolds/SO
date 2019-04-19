@@ -11,19 +11,24 @@
 int signalPid = -1;
 int mypid;
 char fifo[15];
+struct sigaction sa = {0};
 
 void get_pid(int sig, siginfo_t *info, void *context){
     signalPid = info->si_pid;
     printf("signalPID: %d\n",signalPid);
 }
 
-int main(int argc, char const *argv[]){
-	int pipe = (int) open("pipe",O_WRONLY);
-	mypid = getpid();
-	struct sigaction sa = {0};
+void signalInit(){
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = get_pid;
     sigaction(SIGUSR2, &sa, NULL);
+}
+
+int main(int argc, char const *argv[]){
+	int pipe = (int) open("pipe",O_WRONLY);
+	mypid = getpid();
+
+	signalInit();
 
    	query q;
    	q.pid = mypid;
@@ -43,8 +48,6 @@ int main(int argc, char const *argv[]){
    		//close(serverInput);
    	}
 
-   	sleep(1);
-
 	char* buf = malloc(1024*sizeof(char));
 
 	while (fgets(buf, 1024, stdin)) {
@@ -56,7 +59,6 @@ int main(int argc, char const *argv[]){
 		
 		int it;
 		for(it=0;token!=NULL;token = strtok(NULL," "),it++) info[it] = strdup(token);
-		for(it=0;it<n;it++) printf("info[%d]:%s\n",it,info[it]);
 
 		switch(n){
 			case 1:;
@@ -70,7 +72,7 @@ int main(int argc, char const *argv[]){
 				write(pipe,&case1,sizeof(case1));
 				stockAndPrice s1;
 				read(serverInput,&s1,sizeof(s1));
-				printf("stock: %d, price: %d\n",s1.stock,s1.price);				
+				printf("stock:\t%d\tprice:\t%d\n",s1.stock,s1.price);				
 			break;
 			case 2:;
 				query case2;
@@ -83,7 +85,7 @@ int main(int argc, char const *argv[]){
 				write(pipe,&case2,sizeof(case2));			
 				int res2;
 				read(serverInput,&res2,sizeof(int));
-				printf("stock: %d\n",res2);				
+				printf("stock:\t%d\n",res2);				
 			break;
 		}
 
