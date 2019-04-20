@@ -78,6 +78,7 @@ int main(int argc, char const *argv[]){
 				caseN.operation = 2;
 				caseN.code = atoi(info[1]);
 				strcpy(caseN.name,info[2]);
+				if (caseN.name[strlen(caseN.name)-1]=='\n') caseN.name[strlen(caseN.name)-1] = '\0';
 				caseN.value = 0;
 				write(pipe,&caseN,sizeof(caseN));
 			break;
