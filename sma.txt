@@ -1,0 +1,9 @@
+i artigo0 10
+i artigo1 1
+i artigo2 2
+i artigo3 3
+i artigo4 4
+i artigo5 5
+i artigo6 6
+n 0 a0
+n 1 a1

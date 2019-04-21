@@ -90,7 +90,7 @@ void fileCompressor(){
 		read(strings,&name,sizeof(char)*(a.refF-a.refI+1));
 		name[a.refF-a.refI+2] = '\0';
 		refI = (int) lseek(newStrings,0,SEEK_END);
-		write(newStrings,&name,sizeof(char)*(strlen(name)+1));
+		write(newStrings,&name,sizeof(char)*(strlen(name)));
 		refF = (int) lseek(newStrings,0,SEEK_CUR)-1;
 		lseek(artigos,k*sizeof(struct article),SEEK_SET);
 		write(artigos,&refI,sizeof(int));
@@ -100,7 +100,7 @@ void fileCompressor(){
 	}
 	lseek(strings,0,SEEK_END);
 	lseek(newStrings,0,SEEK_END);
-	printf("Big file %d Compressed file %d\n",(int) lseek(strings,0,SEEK_CUR),(int) lseek(newStrings,0,SEEK_CUR));
+	printf("Big file %d Compressed file %d\n",(int) lseek(strings,0,SEEK_END),(int) lseek(newStrings,0,SEEK_END));
 	close(strings);
 	close(newStrings);
 	unlink("STRINGS");
@@ -183,7 +183,7 @@ int main(int argc, char const *argv[]){
 				waste += (repF-repI+1);
 				int stringI = (int) lseek(strings,0,SEEK_END);
 				write(artigos,&stringI,sizeof(int));
-				write(strings,&q.name,sizeof(char)*(strlen(q.name))+1);
+				write(strings,&q.name,sizeof(char)*(strlen(q.name)));
 				int stringF = (int) lseek(strings,0,SEEK_END)-1;
 				write(artigos,&stringF,sizeof(int));
 				stringsSize += (stringF-stringI+1);
@@ -228,7 +228,7 @@ int main(int argc, char const *argv[]){
 						if (acc3 >= cache[0].accesses) cache[0] = c;
 					}	
 					else cache[cachedArticles++] = c;
-					qsort (cache, maxCache, sizeof(cached), compare);
+					qsort (cache, cachedArticles, sizeof(cached), compare);
 				}
 			break;
 			case 4:; // Stock checking
@@ -249,14 +249,13 @@ int main(int argc, char const *argv[]){
 				if(flag4) break; // If article was found in cache
 
 				int fileLimit4 = (int) lseek(stocks,0,SEEK_END); 
-				int stockLoc4 = (int) lseek(stocks,q.code*sizeof(int),SEEK_SET);;
+				int stockLoc4 = (int) lseek(stocks,q.code*sizeof(int),SEEK_SET);
 				if (stockLoc4 >= fileLimit4) flag4 = 1; // If code the User is looking for is Out of File
 
 				if(!flag4){ // Check if the item is in file
 					read(stocks,&s.stock,sizeof(int));
 					lseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 					read(artigos,&s.price,sizeof(int));
-
 					int accesses4;
 					read(artigos,&accesses4, sizeof(int));
 					accesses4++;
@@ -281,8 +280,7 @@ int main(int argc, char const *argv[]){
 						}
 					}	
 					else cache[cachedArticles++] = c;						
-   					
-   					qsort (cache, maxCache, sizeof(cached), compare);
+   					qsort (cache, cachedArticles, sizeof(cached), compare);
 					write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));					
 				}
 				else{ // Item doesn't exist
@@ -313,7 +311,6 @@ int main(int argc, char const *argv[]){
 				}
 
 				if (flag5) break;
-				
 				int fileLimit5 = (int) lseek(stocks,0,SEEK_END); 
 				int stockLoc5 = (int) lseek(stocks,q.code*sizeof(int),SEEK_SET);
 				if (stockLoc5 >= fileLimit5) flag5 = 1;
@@ -332,15 +329,12 @@ int main(int argc, char const *argv[]){
 					lseek(vendas,0,SEEK_END);
 					write(vendas,&s5,sizeof(sale));
 
-					//printf("SALE: Code %d quantity %d paidAmount %d\n",s5.code,s5.quantity,s5.paidAmount);
-
 					int acc5;
 					read(artigos,&acc5, sizeof(int));
 					acc5++;
 
 					lseek(artigos,-sizeof(int),SEEK_CUR);
 					write(artigos,&acc5,sizeof(int));
-					//printf("Item with code %d has %d accesses\n", q.code,acc5);
 					
 					write(getPipe(userList,q.pid),&stock,sizeof(int));
 					
@@ -365,10 +359,7 @@ int main(int argc, char const *argv[]){
    							//printf("CASE5: Wrote %d to stocks\n",repl.stock);
 						}
 					}	
-					else {
-						//printf("Added to cache article %d with %d stock\n",c.code,c.stock);
-						cache[cachedArticles++] = c; 
-					}
+					else cache[cachedArticles++] = c; 
 					qsort (cache, cachedArticles, sizeof(cached), compare);					
 				}
 				else{ // Item doesn't exist
@@ -386,24 +377,26 @@ int main(int argc, char const *argv[]){
 				removeN(userList,q.pid);
 			break;
 		}
-
-		/*
-		puts(" ");
-		for (int k = 0 ; k < cachedArticles ; k++) printf("cache[%d]: Code %d Price %d Stock %d Accesses %d\n",k,cache[k].code,cache[k].price,cache[k].stock,cache[k].accesses);
-		puts(" ");
-		*/
-
+		//sleep(1);
 	}
 
 	cacheSaving();
 
-	/*
+	/*	
 	articleReader();
-	*/
-	/*
+	
+
 	struct sale sv;
 	lseek(vendas,0,SEEK_SET);
 	while(read(vendas,&sv,sizeof(sale))>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
+	*/
+
+	/*
+	char buf[1024];
+
+	lseek(strings,0,SEEK_SET);
+	int retur = read(strings,&buf,1024);
+	printf("buf: %sF Read %d\n",buf,retur);
 	*/
 
 	close(pipe);
