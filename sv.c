@@ -26,6 +26,35 @@ int artigos;
 int stocks;
 int vendas;
 
+void childProcess(int i){
+	char fileName[4];
+	sprintf(fileName,"ag%d",i);
+
+	int fd = open(fileName,O_CREAT | O_RDWR, 0644);
+	int it, processedArticles = 0, pos = 0;
+	int salesLimit = (int) lseek(vendas,0,SEEK_END); 
+
+	for(it = 0; it < childAmount && pos < salesLimit ; it++){
+		int curItem = i*1000000*sizeof(sale) + it*sizeof(sale);
+		lseek(vendas,curItem,SEEK_SET);
+		sale toP;
+		read(vendas,&toP,sizeof(sale));
+		if (toP.code==(curItem/sizeof(sale))) {
+			lseek(fd,curItem+sizeof(int),SEEK_SET);
+			int totalSales,totalAmount;
+			read(fd,&totalSales,sizeof(int));
+			read(fd,&totalAmount,sizeof(int));
+			
+			totalSales += toP.quantity;
+			totalAmount += toP.paidAmount;
+			lseek(fd,-2*sizeof(int),SEEK_CUR);
+			write(fd,&totalSales,sizeof(int));
+			write(fd,&totalAmount,sizeof(int));			
+		}
+	}
+	close(fd);
+	_exit(i);
+}
 
 void aggregator(int s){
 	time_t rawtime;
@@ -35,20 +64,27 @@ void aggregator(int s){
 	char time[25];
 	sprintf(time,"%d-%d-%dT%d:%d:%d",timeinfo->tm_year+1900,timeinfo->tm_mon+1,timeinfo->tm_mday,timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
 	printf("time: %s\n",time);
+	int saleLength = (int) lseek(vendas,0,SEEK_END);
+	int childAmount = (saleLength / 1000000*sizeof(struct sale)) + 1;
+	/*
+	if (childAmount > 10) childAmount = 10;
+	int pids[childAmount];
+	for (int i = 0 ; i < childAmount ; i++){
+		pids[i] = fork();
+		switch(pids[i]){
+			case -1:
+				perror("Fork failure");
+			break;
+			case 0:
+				childProcess(i);
+			break;
+		}
+	} 
 
-	alarm(1);
-    signal(SIGALRM, aggregator);
-}
-
-void signalInit(){
-    signal(SIGALRM, aggregator);
-    alarm(1);    
-}
-
-void display_message(int s) {
-
-	alarm(1);
-	signal(SIGALRM, display_message);
+	for (int i = 0 ; i < childAmount ; i++) wait(NULL);
+	*/
+	printf("sl: %d ca: %d\n",saleLength,childAmount);
+    signal(SIGINT, aggregator);
 }
 
 void articleReader(){
@@ -126,8 +162,8 @@ int main(int argc, char const *argv[]){
 	init(&userList);
 	mkfifo("pipe",0666);
 	int pipe = open("pipe",O_RDONLY);
-
-	signalInit();
+	
+    signal(SIGINT, aggregator);	
 
 	if(access("ARTIGOS",F_OK)!= -1) {
 		artigos = open("ARTIGOS", O_RDWR);
@@ -189,7 +225,7 @@ int main(int argc, char const *argv[]){
 				stringsSize += (stringF-stringI+1);
 				printf("stringsSize: %d and waste %d\n",stringsSize,waste);
 				printf("waste percentage: %f\n", (waste*100.0/stringsSize));
-				if ((waste*100.0/stringsSize) >= 10.0) fileCompressor();
+				if ((waste*100.0/stringsSize) >= 20.0) fileCompressor();
 			break;
 			case 3: // Price changing
 				lseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
@@ -219,15 +255,27 @@ int main(int argc, char const *argv[]){
 					int acc3;
 					read(artigos,&acc3,sizeof(int));
 					acc3++;
+					lseek(artigos,-sizeof(int),SEEK_CUR);
+					write(artigos,&acc3,sizeof(int));
 					cached c;
 					c.code = q.code;
 					c.price = q.value;
 					c.stock = stk3;
 					c.accesses = acc3;
 					if (cachedArticles==maxCache) { // Updating cache
-						if (acc3 >= cache[0].accesses) cache[0] = c;
+						printf("acc3: %d cache[0].accesses: %d\n", acc3, cache[0].accesses);
+						if (acc3 >= cache[0].accesses) {
+							cached repl = cache[0];
+							cache[0] = c;
+   							lseek(artigos,repl.code*sizeof(struct article)+3*sizeof(int),SEEK_SET);
+   							write(artigos,&repl.accesses,sizeof(int));
+   							lseek(stocks,repl.code*sizeof(int),SEEK_SET);
+   							write(stocks,&repl.stock,sizeof(int));
+   							printf("The item with code %d was replaced and its accesses, %d and stock %d got wrote to the respective file.\n",repl.code,repl.accesses,repl.stock);
+						}
 					}	
 					else cache[cachedArticles++] = c;
+					printf("Added item with code %d\n",c.code);
 					qsort (cache, cachedArticles, sizeof(cached), compare);
 				}
 			break;
@@ -382,10 +430,10 @@ int main(int argc, char const *argv[]){
 
 	cacheSaving();
 
-	/*	
+	
 	articleReader();
 	
-
+	/*
 	struct sale sv;
 	lseek(vendas,0,SEEK_SET);
 	while(read(vendas,&sv,sizeof(sale))>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
