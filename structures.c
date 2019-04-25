@@ -66,3 +66,7 @@ int getPipe (NODE* head, int pid) {
     for (temp = head; temp; temp = temp->next) if (temp->data.pid == pid) return temp->data.fd;
     return -1;
 }
+
+void print_sale(sale s){
+    printf("Sale: Code: %d\t Quantity %d\t PaidAmount\t%d\n",s.code,s.quantity,s.paidAmount);
+}

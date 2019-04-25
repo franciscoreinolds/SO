@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/stat.h> 
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <signal.h>
 #include <time.h>
 #include <math.h>
@@ -18,6 +19,8 @@ int clientN = 0;
 int nextCode = 0;
 int stringsSize = 0;
 int waste = 0;
+int childAmount = 0;
+int maxCap = 100*sizeof(sale);
 cached cache[maxCache];
 NODE* userList;
 query q;
@@ -26,31 +29,55 @@ int artigos;
 int stocks;
 int vendas;
 
+void agread(int i){
+	char fileName[4];
+	sprintf(fileName,"ag%d",i);
+	printf("Reading file ag%d\n",i);
+	int fd = open(fileName, O_RDONLY);
+	int fileSize = (int) lseek(fd,0,SEEK_END);	
+	for (int it = 0 ; it*sizeof(sale) < fileSize ; it++) {
+		lseek(fd,it*sizeof(sale),SEEK_SET);
+		sale s;
+		read(fd,&s,sizeof(sale));
+		print_sale(s);
+	}
+
+	close(fd);
+
+}
+
 void childProcess(int i){
 	char fileName[4];
 	sprintf(fileName,"ag%d",i);
 
 	int fd = open(fileName,O_CREAT | O_RDWR, 0644);
-	int it, processedArticles = 0, pos = 0;
+	int it, processedArticles = 0, curItem;
 	int salesLimit = (int) lseek(vendas,0,SEEK_END); 
-
-	for(it = 0; it < childAmount && pos < salesLimit ; it++){
-		int curItem = i*1000000*sizeof(sale) + it*sizeof(sale);
-		lseek(vendas,curItem,SEEK_SET);
+	for(it = 0; processedArticles < (maxCap/sizeof(sale)) && (curItem = i*maxCap + it*sizeof(sale)) < salesLimit ; it++){
 		sale toP;
+		lseek(vendas,curItem,SEEK_SET);
 		read(vendas,&toP,sizeof(sale));
-		if (toP.code==(curItem/sizeof(sale))) {
-			lseek(fd,curItem+sizeof(int),SEEK_SET);
+		lseek(fd,toP.code*sizeof(sale),SEEK_SET);
+		read(fd,&curItem,sizeof(int));
+		if (toP.code==curItem) {
 			int totalSales,totalAmount;
 			read(fd,&totalSales,sizeof(int));
-			read(fd,&totalAmount,sizeof(int));
-			
+			read(fd,&totalAmount,sizeof(int));			
 			totalSales += toP.quantity;
 			totalAmount += toP.paidAmount;
-			lseek(fd,-2*sizeof(int),SEEK_CUR);
+			lseek(fd,-2*sizeof(int),SEEK_CUR);	
 			write(fd,&totalSales,sizeof(int));
-			write(fd,&totalAmount,sizeof(int));			
+			write(fd,&totalAmount,sizeof(int));
 		}
+		else {
+			lseek(fd,toP.code*sizeof(sale),SEEK_SET);
+			write(fd,&toP.code,sizeof(int));
+			write(fd,&toP.quantity,sizeof(int));
+			write(fd,&toP.paidAmount,sizeof(int));	
+		}
+		processedArticles++;
+		lseek(fd,-sizeof(sale),SEEK_CUR);
+		read(fd,&toP,sizeof(sale));
 	}
 	close(fd);
 	_exit(i);
@@ -65,8 +92,8 @@ void aggregator(int s){
 	sprintf(time,"%d-%d-%dT%d:%d:%d",timeinfo->tm_year+1900,timeinfo->tm_mon+1,timeinfo->tm_mday,timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
 	printf("time: %s\n",time);
 	int saleLength = (int) lseek(vendas,0,SEEK_END);
-	int childAmount = (saleLength / 1000000*sizeof(struct sale)) + 1;
-	/*
+	childAmount = (saleLength / maxCap) + 1;
+	printf("sl: %d ca: %d maxcap %d\n",saleLength,childAmount,maxCap);
 	if (childAmount > 10) childAmount = 10;
 	int pids[childAmount];
 	for (int i = 0 ; i < childAmount ; i++){
@@ -82,8 +109,7 @@ void aggregator(int s){
 	} 
 
 	for (int i = 0 ; i < childAmount ; i++) wait(NULL);
-	*/
-	printf("sl: %d ca: %d\n",saleLength,childAmount);
+	for (int i = 0 ; i < childAmount ; i++) agread(i);
     signal(SIGINT, aggregator);
 }
 
@@ -347,13 +373,13 @@ int main(int argc, char const *argv[]){
 				for(int it4 = 0 ; it4 < cachedArticles ; it4++) { // Check if the item is in cache
 					if(cache[it4].code==q.code) {
 						flag5 = 1;
-						cache[it4].stock -= (-1*q.value);
+						cache[it4].stock += (-1*q.value);
 						cache[it4].accesses++;
 						write(getPipe(userList,q.pid),&cache[it4].stock,sizeof(int));
 						s5.paidAmount = cache[it4].price*q.value;
 						qsort (cache, cachedArticles, sizeof(cached), compare);					
 						lseek(vendas,0,SEEK_END);
-						write(vendas,&s5,sizeof(sale));
+						if (q.value>0) write(vendas,&s5,sizeof(sale));
 						break;
 					}
 				}
@@ -365,7 +391,7 @@ int main(int argc, char const *argv[]){
 
 				if(!flag5){ // Check if the item is in the file
 					read(stocks,&stock,sizeof(int));
-					stock -= (-1*q.value);
+					stock += (-1*q.value);
 					lseek(stocks,-sizeof(int),SEEK_CUR);
 					write(stocks,&stock,sizeof(int));
 
@@ -375,7 +401,7 @@ int main(int argc, char const *argv[]){
 					s5.paidAmount = price*(-1*q.value);
 				
 					lseek(vendas,0,SEEK_END);
-					write(vendas,&s5,sizeof(sale));
+					if (q.value>0) write(vendas,&s5,sizeof(sale));
 
 					int acc5;
 					read(artigos,&acc5, sizeof(int));
@@ -399,12 +425,8 @@ int main(int argc, char const *argv[]){
 
    							lseek(artigos,repl.code*sizeof(struct article)+3*sizeof(int),SEEK_SET);
    							write(artigos,&repl.accesses,sizeof(int));
-
-   							//printf("Article with code %d and %d accesses was replaced by article %d and %d accesses\n", repl.code, repl.accesses, c.code, c.accesses);
    							lseek(stocks,repl.code*sizeof(int),SEEK_SET);
-   							//printf("Replaced written to %d\n",(int) ftell(stocks));  							
    							write(stocks,&repl.stock,sizeof(int));
-   							//printf("CASE5: Wrote %d to stocks\n",repl.stock);
 						}
 					}	
 					else cache[cachedArticles++] = c; 
@@ -429,15 +451,18 @@ int main(int argc, char const *argv[]){
 	}
 
 	cacheSaving();
-
 	
 	articleReader();
-	
 	/*
 	struct sale sv;
 	lseek(vendas,0,SEEK_SET);
 	while(read(vendas,&sv,sizeof(sale))>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
 	*/
+	int salesLimit = (int) lseek(vendas,0,SEEK_END);
+
+	if(salesLimit) aggregator(SIGINT);
+	
+	printf("salesLimit: %d\n",salesLimit);
 
 	/*
 	char buf[1024];

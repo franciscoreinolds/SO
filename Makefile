@@ -10,4 +10,4 @@ sv: sv.c
 cv: cv.c
 	gcc -Wall -Werror -g -o cv cv.c structures.c
 clean:
-	rm -f cv sv ma mainpipe ARTIGOS newStrings STOCKS STRINGS VENDAS structures st pipe*
+	rm -f cv sv ma mainpipe ARTIGOS newStrings STOCKS STRINGS VENDAS structures st pipe* ag*
