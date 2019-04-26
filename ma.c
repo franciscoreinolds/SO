@@ -35,15 +35,17 @@ int main(int argc, char const *argv[]){
    	sprintf(fifo,"pipe%d",getpid());
 	strcpy(q.name,fifo);
 	printf("fifo: %s\n",fifo);
-	write(pipe,&q,sizeof(q));
-
-   	mkfifo(fifo,0644);
-   	int serverInput = open(fifo,O_RDWR);
+	int written = write(pipe,&q,sizeof(q));
+	printf("Oi: %d\n",written);
+   	int pip = mkfifo(fifo,0644);
+   	printf("pip: %d\n",pip);
+   	int serverInput = open(fifo,O_RDONLY);
    	if(serverInput!=-1) {
    		printf("serverInput:%d\n",serverInput);
    		//dup2(serverInput,1);
    		//close(serverInput);
    	}
+   	else printf("serverInput:%d\n",serverInput);
 
 	char* buf = malloc(1024*sizeof(char));
 

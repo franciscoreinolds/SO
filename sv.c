@@ -20,7 +20,7 @@ int nextCode = 0;
 int stringsSize = 0;
 int waste = 0;
 int childAmount = 0;
-int maxCap = 100*sizeof(sale);
+int maxCap = 20*sizeof(sale);
 cached cache[maxCache];
 NODE* userList;
 query q;
@@ -39,27 +39,57 @@ void agread(int i){
 		lseek(fd,it*sizeof(sale),SEEK_SET);
 		sale s;
 		read(fd,&s,sizeof(sale));
-		print_sale(s);
+		print_sale(s,-1);
 	}
-
 	close(fd);
+}
 
+void merger (int i, char* time) {
+	char fileName[4];
+	sprintf(fileName,"ag%d",i);
+	int fd = open(time,O_CREAT|O_RDWR,0644); // TIME
+	int readFrom = open(fileName,O_RDONLY); // AGx
+	int rdSize = (int) lseek(readFrom,0,SEEK_END);
+	sale s;
+	for (int it = 0 ; it*sizeof(sale) < rdSize ; it++){
+		lseek(readFrom,it*sizeof(sale),SEEK_SET);
+		read(readFrom,&s,sizeof(sale));
+		if (s.code==it) {
+			lseek(fd,s.code*sizeof(sale),SEEK_SET);
+			sale p;
+			read(fd,&p,sizeof(sale));
+			print_sale(p,45);
+			if (p.code==s.code) {
+				s.quantity += p.quantity;
+				s.paidAmount += p.paidAmount;
+			}
+			lseek(fd,s.code*sizeof(sale),SEEK_SET);
+			write(fd,&s,sizeof(sale));
+		}
+	}
+	close(fd);
+	close(readFrom);
 }
 
 void childProcess(int i){
 	char fileName[4];
 	sprintf(fileName,"ag%d",i);
-
 	int fd = open(fileName,O_CREAT | O_RDWR, 0644);
+	close(vendas);
+	vendas = open("VENDAS",O_RDONLY);
 	int it, processedArticles = 0, curItem;
-	int salesLimit = (int) lseek(vendas,0,SEEK_END); 
+	int salesLimit = (int) lseek(vendas,0,SEEK_END);
 	for(it = 0; processedArticles < (maxCap/sizeof(sale)) && (curItem = i*maxCap + it*sizeof(sale)) < salesLimit ; it++){
 		sale toP;
 		lseek(vendas,curItem,SEEK_SET);
+		//printf("Began reading from %d\n",curItem);
 		read(vendas,&toP,sizeof(sale));
+		//printf("Finished reading at %d\n", (int) lseek(vendas,0,SEEK_CUR));
+		//print_sale(toP,i);
 		lseek(fd,toP.code*sizeof(sale),SEEK_SET);
 		read(fd,&curItem,sizeof(int));
 		if (toP.code==curItem) {
+			//puts("IF");
 			int totalSales,totalAmount;
 			read(fd,&totalSales,sizeof(int));
 			read(fd,&totalAmount,sizeof(int));			
@@ -70,6 +100,7 @@ void childProcess(int i){
 			write(fd,&totalAmount,sizeof(int));
 		}
 		else {
+			//puts("ELSE");
 			lseek(fd,toP.code*sizeof(sale),SEEK_SET);
 			write(fd,&toP.code,sizeof(int));
 			write(fd,&toP.quantity,sizeof(int));
@@ -78,7 +109,9 @@ void childProcess(int i){
 		processedArticles++;
 		lseek(fd,-sizeof(sale),SEEK_CUR);
 		read(fd,&toP,sizeof(sale));
+		//print_sale(toP,i);
 	}
+	close(vendas);
 	close(fd);
 	_exit(i);
 }
@@ -107,9 +140,26 @@ void aggregator(int s){
 			break;
 		}
 	} 
-
-	for (int i = 0 ; i < childAmount ; i++) wait(NULL);
-	for (int i = 0 ; i < childAmount ; i++) agread(i);
+	puts("");
+	int st;
+	for (int i = 0 ; i < childAmount ; i++)	waitpid(pids[i],&st,0);
+	int agres = open(time,O_CREAT|O_RDWR,0644);
+	sale filler;
+	filler.quantity = 0;
+	filler.paidAmount = 0;
+	for(int i  = 0 ; i < nextCode-1 ; i++) {
+		filler.code = i;
+		write(agres,&filler,sizeof(sale));
+	}
+	for (int i = 0 ; i < childAmount ; i++) merger(i,time);
+	int lim = (int) lseek(agres,0,SEEK_END);
+	for (int it = 0 ; it*sizeof(sale) < lim ; it++) {
+		lseek(agres,it*sizeof(sale),SEEK_SET);
+		sale s;
+		read(agres,&s,sizeof(sale));
+		print_sale(s,100);
+	}		
+	close(agres);
     signal(SIGINT, aggregator);
 }
 
@@ -213,9 +263,11 @@ int main(int argc, char const *argv[]){
 				element.pid = q.pid;
 				strcpy(element.namedPipe,q.name);
 				element.type = q.type;
-				element.fd = open(q.name,O_RDWR);
-				if(element.fd==-1) kill(q.pid,SIGINT);
-				else userList = add(userList,element);
+				element.fd = open(q.name,O_WRONLY);
+				if(element.fd==-1) {
+					while(element.fd==-1) element.fd = open(q.name,O_WRONLY);
+				}
+				userList = add(userList,element);
 			break;
 			case 1:; // Inserting a new article
 				article articleToI;

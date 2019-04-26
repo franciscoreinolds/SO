@@ -66,6 +66,6 @@ NODE* add(NODE* node, user toI);
 void removeN(NODE* head, int pid);
 NODE *free_list(NODE *head);
 int getPipe(NODE*head, int pid);
-void print_sale(sale s);
+void print_sale(sale s, int i);
 
 #endif

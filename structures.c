@@ -67,6 +67,6 @@ int getPipe (NODE* head, int pid) {
     return -1;
 }
 
-void print_sale(sale s){
-    printf("Sale: Code: %d\t Quantity %d\t PaidAmount\t%d\n",s.code,s.quantity,s.paidAmount);
+void print_sale(sale s, int i){
+    printf("Sale %d: Code: %d\t Quantity %d\t PaidAmount\t%d\n",i,s.code,s.quantity,s.paidAmount);
 }
