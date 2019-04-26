@@ -50,15 +50,17 @@ void merger (int i, char* time) {
 	int fd = open(time,O_CREAT|O_RDWR,0644); // TIME
 	int readFrom = open(fileName,O_RDONLY); // AGx
 	int rdSize = (int) lseek(readFrom,0,SEEK_END);
+	printf("rdSize: %d\n",rdSize);
 	sale s;
-	for (int it = 0 ; it*sizeof(sale) < rdSize ; it++){
+	int it;
+	for (it = 0 ; it*sizeof(sale) < rdSize ; it++){
+		printf("Merger %d it: %d\n",i,it);
 		lseek(readFrom,it*sizeof(sale),SEEK_SET);
 		read(readFrom,&s,sizeof(sale));
 		if (s.code==it) {
 			lseek(fd,s.code*sizeof(sale),SEEK_SET);
 			sale p;
 			read(fd,&p,sizeof(sale));
-			print_sale(p,45);
 			if (p.code==s.code) {
 				s.quantity += p.quantity;
 				s.paidAmount += p.paidAmount;
@@ -79,14 +81,16 @@ void childProcess(int i){
 	vendas = open("VENDAS",O_RDONLY);
 	int it, processedArticles = 0, curItem;
 	int salesLimit = (int) lseek(vendas,0,SEEK_END);
-	for(it = 0; processedArticles < (maxCap/sizeof(sale)) && (curItem = i*maxCap + it*sizeof(sale)) < salesLimit ; it++){
+	for(it = 0; processedArticles < maxCap && (curItem = i*maxCap+it) < (int) (salesLimit/sizeof(sale)); it++){
 		sale toP;
+		curItem *= sizeof(sale);
 		lseek(vendas,curItem,SEEK_SET);
 		//printf("Began reading from %d\n",curItem);
 		read(vendas,&toP,sizeof(sale));
 		//printf("Finished reading at %d\n", (int) lseek(vendas,0,SEEK_CUR));
 		//print_sale(toP,i);
 		lseek(fd,toP.code*sizeof(sale),SEEK_SET);
+		if (toP.code==3) print_sale(toP,333);
 		read(fd,&curItem,sizeof(int));
 		if (toP.code==curItem) {
 			//puts("IF");
@@ -126,8 +130,13 @@ void aggregator(int s){
 	printf("time: %s\n",time);
 	int saleLength = (int) lseek(vendas,0,SEEK_END);
 	childAmount = (saleLength / maxCap) + 1;
-	printf("sl: %d ca: %d maxcap %d\n",saleLength,childAmount,maxCap);
-	if (childAmount > 10) childAmount = 10;
+	printf("sl: %d ca: %d maxCap %d\n",saleLength,childAmount,maxCap);
+	if (childAmount > 10) {
+		puts(">10");
+		childAmount = 10;
+		maxCap = (saleLength/(sizeof(sale)*10))+1;
+		printf("maxCap: %d\n",maxCap);
+	}
 	int pids[childAmount];
 	for (int i = 0 ; i < childAmount ; i++){
 		pids[i] = fork();
@@ -449,12 +458,12 @@ int main(int argc, char const *argv[]){
 
 					lseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 					read(artigos,&price,sizeof(int));
-
-					s5.paidAmount = price*(-1*q.value);
+					printf("code %d price %d\n",q.code,price);
+					s5.paidAmount = price*q.value;
 				
 					lseek(vendas,0,SEEK_END);
 					if (q.value>0) write(vendas,&s5,sizeof(sale));
-
+					if (q.code == 3) print_sale(s5,33);
 					int acc5;
 					read(artigos,&acc5, sizeof(int));
 					acc5++;
