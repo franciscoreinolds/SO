@@ -67,5 +67,6 @@ void removeN(NODE* head, int pid);
 NODE *free_list(NODE *head);
 int getPipe(NODE*head, int pid);
 void print_sale(sale s, int i);
+int getLine(int fd, char* buffer, int n);
 
 #endif

@@ -50,7 +50,7 @@ int main(int argc, char const *argv[]){
 
 	char* buf = malloc(1024*sizeof(char));
 
-	while (fgets(buf, 1024, stdin)) {
+	while (getLine(0,buf,1024)) {
 		int n;
 		if (strchr(buf,' ')) n = 2;	
 		else n = 1;

@@ -48,8 +48,8 @@ int main(int argc, char const *argv[]){
    	else printf("serverInput:%d\n",serverInput);
 
 	char* buf = malloc(1024*sizeof(char));
-
-	while (fgets(buf, 1024, stdin)) {
+	while (getLine(0,buf,1024)) {
+		printf("buf: %s\n",buf);
 		char *token = strtok(buf," ");
 		char** info = malloc(3*sizeof(char*));
 		int it;
@@ -97,13 +97,9 @@ int main(int argc, char const *argv[]){
 		}	
 
 		for(it=0;it<3;it++) free(info[it]);
-
 		free(info);
-
-		//sleep(1);
-
+	
 	}
-
 	close(serverInput);
 	free(buf);
 	

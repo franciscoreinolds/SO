@@ -2,6 +2,7 @@
 #include <stdlib.h> 
 #include <limits.h>
 #include <unistd.h>
+#include <string.h>
 #include "structures.h"
 
 void init(NODE** head) {
@@ -69,4 +70,13 @@ int getPipe (NODE* head, int pid) {
 
 void print_sale(sale s, int i){
     printf("Sale %d: Code: %d\t Quantity %d\t PaidAmount\t%d\n",i,s.code,s.quantity,s.paidAmount);
+}
+
+int getLine(int fd, char* buffer, int n){
+    char buf;
+    int max = n;
+    int cur = 0;
+    while(read(fd,&buf,1) && cur < max && buf!='\n') buffer[cur++]=buf;
+    buffer[cur] = '\0';
+    return cur;
 }

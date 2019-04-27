@@ -32,7 +32,6 @@ int vendas;
 void agread(int i){
 	char fileName[4];
 	sprintf(fileName,"ag%d",i);
-	printf("Reading file ag%d\n",i);
 	int fd = open(fileName, O_RDONLY);
 	int fileSize = (int) lseek(fd,0,SEEK_END);	
 	for (int it = 0 ; it*sizeof(sale) < fileSize ; it++) {
@@ -50,11 +49,9 @@ void merger (int i, char* time) {
 	int fd = open(time,O_CREAT|O_RDWR,0644); // TIME
 	int readFrom = open(fileName,O_RDONLY); // AGx
 	int rdSize = (int) lseek(readFrom,0,SEEK_END);
-	printf("rdSize: %d\n",rdSize);
 	sale s;
 	int it;
 	for (it = 0 ; it*sizeof(sale) < rdSize ; it++){
-		printf("Merger %d it: %d\n",i,it);
 		lseek(readFrom,it*sizeof(sale),SEEK_SET);
 		read(readFrom,&s,sizeof(sale));
 		if (s.code==it) {
@@ -85,15 +82,10 @@ void childProcess(int i){
 		sale toP;
 		curItem *= sizeof(sale);
 		lseek(vendas,curItem,SEEK_SET);
-		//printf("Began reading from %d\n",curItem);
 		read(vendas,&toP,sizeof(sale));
-		//printf("Finished reading at %d\n", (int) lseek(vendas,0,SEEK_CUR));
-		//print_sale(toP,i);
 		lseek(fd,toP.code*sizeof(sale),SEEK_SET);
-		if (toP.code==3) print_sale(toP,333);
 		read(fd,&curItem,sizeof(int));
 		if (toP.code==curItem) {
-			//puts("IF");
 			int totalSales,totalAmount;
 			read(fd,&totalSales,sizeof(int));
 			read(fd,&totalAmount,sizeof(int));			
@@ -104,7 +96,6 @@ void childProcess(int i){
 			write(fd,&totalAmount,sizeof(int));
 		}
 		else {
-			//puts("ELSE");
 			lseek(fd,toP.code*sizeof(sale),SEEK_SET);
 			write(fd,&toP.code,sizeof(int));
 			write(fd,&toP.quantity,sizeof(int));
@@ -113,7 +104,6 @@ void childProcess(int i){
 		processedArticles++;
 		lseek(fd,-sizeof(sale),SEEK_CUR);
 		read(fd,&toP,sizeof(sale));
-		//print_sale(toP,i);
 	}
 	close(vendas);
 	close(fd);
@@ -132,7 +122,6 @@ void aggregator(int s){
 	childAmount = (saleLength / maxCap) + 1;
 	printf("sl: %d ca: %d maxCap %d\n",saleLength,childAmount,maxCap);
 	if (childAmount > 10) {
-		puts(">10");
 		childAmount = 10;
 		maxCap = (saleLength/(sizeof(sale)*10))+1;
 		printf("maxCap: %d\n",maxCap);
@@ -149,7 +138,6 @@ void aggregator(int s){
 			break;
 		}
 	} 
-	puts("");
 	int st;
 	for (int i = 0 ; i < childAmount ; i++)	waitpid(pids[i],&st,0);
 	int agres = open(time,O_CREAT|O_RDWR,0644);
@@ -458,12 +446,10 @@ int main(int argc, char const *argv[]){
 
 					lseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 					read(artigos,&price,sizeof(int));
-					printf("code %d price %d\n",q.code,price);
 					s5.paidAmount = price*q.value;
 				
 					lseek(vendas,0,SEEK_END);
 					if (q.value>0) write(vendas,&s5,sizeof(sale));
-					if (q.code == 3) print_sale(s5,33);
 					int acc5;
 					read(artigos,&acc5, sizeof(int));
 					acc5++;
@@ -498,9 +484,6 @@ int main(int argc, char const *argv[]){
 					s.price = -1;
 					write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));
 				}	
-
-				//puts(" ");
-
 			break;
 			case 6: // User disconnecting
 				kill(q.pid, SIGUSR1);
