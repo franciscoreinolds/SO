@@ -80,3 +80,9 @@ int getLine(int fd, char* buffer, int n){
     buffer[cur] = '\0';
     return cur;
 }
+
+int space_counter(char* buf){
+    int res = 0;
+    for(int i = 0; buf[i]!='\0'; i++) if (buf[i]==' ') res++;
+    return res;
+}

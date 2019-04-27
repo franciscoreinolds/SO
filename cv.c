@@ -54,44 +54,45 @@ int main(int argc, char const *argv[]){
 		int n;
 		if (strchr(buf,' ')) n = 2;	
 		else n = 1;
-		char** info = malloc(n*sizeof(char*));
-		char *token = strtok(buf," ");
-		
-		int it;
-		for(it=0;token!=NULL;token = strtok(NULL," "),it++) info[it] = strdup(token);
+		if (space_counter(buf)<3) {
+			char** info = malloc(n*sizeof(char*));
+			char *token = strtok(buf," ");
+			
+			int it;
+			for(it=0;token!=NULL;token = strtok(NULL," "),it++) info[it] = strdup(token);
 
-		switch(n){
-			case 1:;
-				query case1;
-				memset(&case1.name,0,128);
-				case1.pid = mypid;
-				case1.type = 1;
-				case1.operation = 4;
-				case1.code = atoi(info[0]);
-				case1.value = -1;
-				write(pipe,&case1,sizeof(case1));
-				stockAndPrice s1;
-				read(serverInput,&s1,sizeof(s1));
-				printf("stock:\t%d\tprice:\t%d\n",s1.stock,s1.price);				
-			break;
-			case 2:;
-				query case2;
-				memset(&case2.name,0,128);
-				case2.pid = mypid;
-				case2.type = 1;
-				case2.operation = 5;
-				case2.code = atoi(info[0]);
-				case2.value = atoi(info[1]);
-				write(pipe,&case2,sizeof(case2));			
-				int res2;
-				read(serverInput,&res2,sizeof(int));
-				printf("stock:\t%d\n",res2);				
-			break;
+			switch(n){
+				case 1:;
+					query case1;
+					memset(&case1.name,0,128);
+					case1.pid = mypid;
+					case1.type = 1;
+					case1.operation = 4;
+					case1.code = atoi(info[0]);
+					case1.value = -1;
+					write(pipe,&case1,sizeof(case1));
+					stockAndPrice s1;
+					read(serverInput,&s1,sizeof(s1));
+					printf("stock:\t%d\tprice:\t%d\n",s1.stock,s1.price);				
+				break;
+				case 2:;
+					query case2;
+					memset(&case2.name,0,128);
+					case2.pid = mypid;
+					case2.type = 1;
+					case2.operation = 5;
+					case2.code = atoi(info[0]);
+					case2.value = atoi(info[1]);
+					write(pipe,&case2,sizeof(case2));			
+					int res2;
+					read(serverInput,&res2,sizeof(int));
+					printf("stock:\t%d\n",res2);				
+				break;
+			}
+
+			for(it=0;it<n;it++) free(info[it]);
+			free(info);
 		}
-
-		for(it=0;it<n;it++) free(info[it]);
-		free(info);
-
 	}
 
    	query e;

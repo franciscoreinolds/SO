@@ -35,10 +35,8 @@ int main(int argc, char const *argv[]){
    	sprintf(fifo,"pipe%d",getpid());
 	strcpy(q.name,fifo);
 	printf("fifo: %s\n",fifo);
-	int written = write(pipe,&q,sizeof(q));
-	printf("Oi: %d\n",written);
-   	int pip = mkfifo(fifo,0644);
-   	printf("pip: %d\n",pip);
+	write(pipe,&q,sizeof(q));
+   	mkfifo(fifo,0644);
    	int serverInput = open(fifo,O_RDONLY);
    	if(serverInput!=-1) {
    		printf("serverInput:%d\n",serverInput);
@@ -50,55 +48,56 @@ int main(int argc, char const *argv[]){
 	char* buf = malloc(1024*sizeof(char));
 	while (getLine(0,buf,1024)) {
 		printf("buf: %s\n",buf);
-		char *token = strtok(buf," ");
-		char** info = malloc(3*sizeof(char*));
-		int it;
+		if (space_counter(buf)==2) {
+			char *token = strtok(buf," ");
+			char** info = malloc(3*sizeof(char*));
+			int it;
 
-		for(it=0;token!=NULL;token = strtok(NULL," "),it++) info[it] = strdup(token);
+			for(it=0;token!=NULL;token = strtok(NULL," "),it++) info[it] = strdup(token);
 
-		switch(info[0][0]){
-			case 'i':;
-				query caseI;
-				memset(&caseI.name,0,128);
-				caseI.pid = mypid;
-				caseI.type = 0;
-				caseI.operation = 1;
-				caseI.code = -1;
-				strcpy(caseI.name,info[1]);
-				caseI.value = atoi(info[2]);
-				write(pipe,&caseI,sizeof(caseI));
-				char* res = malloc(1024*sizeof(char));
-				read(serverInput,res,1024);
-				printf("Code: %s\n",res);
-				fflush(stdout);
-			break;
-			case 'n':;
-				query caseN;
-				memset(&caseN.name,0,128);
-				caseN.pid = mypid;
-				caseN.type = 0;
-				caseN.operation = 2;
-				caseN.code = atoi(info[1]);
-				strcpy(caseN.name,info[2]);
-				if (caseN.name[strlen(caseN.name)-1]=='\n') caseN.name[strlen(caseN.name)-1] = '\0';
-				caseN.value = 0;
-				write(pipe,&caseN,sizeof(caseN));
-			break;
-			case 'p':;
-				query caseP;
-				memset(&caseP.name,0,128);
-				caseP.pid = mypid;
-				caseP.type = 0;
-				caseP.operation = 3;
-				caseP.code = atoi(info[1]);
-				caseP.value = atoi(info[2]);
-				write(pipe,&caseP,sizeof(caseP));					
-			break;
-		}	
+			switch(info[0][0]){
+				case 'i':;
+					query caseI;
+					memset(&caseI.name,0,128);
+					caseI.pid = mypid;
+					caseI.type = 0;
+					caseI.operation = 1;
+					caseI.code = -1;
+					strcpy(caseI.name,info[1]);
+					caseI.value = atoi(info[2]);
+					write(pipe,&caseI,sizeof(caseI));
+					char* res = malloc(1024*sizeof(char));
+					read(serverInput,res,1024);
+					printf("Code: %s\n",res);
+					fflush(stdout);
+				break;
+				case 'n':;
+					query caseN;
+					memset(&caseN.name,0,128);
+					caseN.pid = mypid;
+					caseN.type = 0;
+					caseN.operation = 2;
+					caseN.code = atoi(info[1]);
+					strcpy(caseN.name,info[2]);
+					if (caseN.name[strlen(caseN.name)-1]=='\n') caseN.name[strlen(caseN.name)-1] = '\0';
+					caseN.value = 0;
+					write(pipe,&caseN,sizeof(caseN));
+				break;
+				case 'p':;
+					query caseP;
+					memset(&caseP.name,0,128);
+					caseP.pid = mypid;
+					caseP.type = 0;
+					caseP.operation = 3;
+					caseP.code = atoi(info[1]);
+					caseP.value = atoi(info[2]);
+					write(pipe,&caseP,sizeof(caseP));					
+				break;
+			}	
 
-		for(it=0;it<3;it++) free(info[it]);
-		free(info);
-	
+			for(it=0;it<3;it++) free(info[it]);
+			free(info);
+		}
 	}
 	close(serverInput);
 	free(buf);

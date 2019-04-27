@@ -68,6 +68,8 @@ void merger (int i, char* time) {
 	}
 	close(fd);
 	close(readFrom);
+	unlink(fileName);
+	printf("Unlinked %s\n",fileName);
 }
 
 void childProcess(int i){
@@ -157,6 +159,7 @@ void aggregator(int s){
 		print_sale(s,100);
 	}		
 	close(agres);
+	printf("agres: %s\n",time);
     signal(SIGINT, aggregator);
 }
 
@@ -491,31 +494,23 @@ int main(int argc, char const *argv[]){
 				removeN(userList,q.pid);
 			break;
 		}
-		//sleep(1);
+		sleep(1);
 	}
 
 	cacheSaving();
 	
 	articleReader();
+	
 	/*
 	struct sale sv;
 	lseek(vendas,0,SEEK_SET);
 	while(read(vendas,&sv,sizeof(sale))>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
 	*/
+	
 	int salesLimit = (int) lseek(vendas,0,SEEK_END);
 
 	if(salesLimit) aggregator(SIGINT);
 	
-	printf("salesLimit: %d\n",salesLimit);
-
-	/*
-	char buf[1024];
-
-	lseek(strings,0,SEEK_SET);
-	int retur = read(strings,&buf,1024);
-	printf("buf: %sF Read %d\n",buf,retur);
-	*/
-
 	close(pipe);
 	
 	close(artigos);
