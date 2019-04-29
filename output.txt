@@ -1,0 +1,20 @@
+time: 2019-4-29T20:22:57
+sl: 12480 ca: 53 maxCap 240
+maxCap: 105
+Unlinked agr0
+Unlinked agr1
+Unlinked agr2
+Unlinked agr3
+Unlinked agr4
+Unlinked agr5
+Unlinked agr6
+Unlinked agr7
+Unlinked agr8
+Unlinked agr9
+Sale 100: Code: 0	 Quantity 1685	 PaidAmount	0
+Sale 100: Code: 1	 Quantity 1775	 PaidAmount	1775
+Sale 100: Code: 2	 Quantity 1740	 PaidAmount	3480
+Sale 100: Code: 3	 Quantity 0	 PaidAmount	0
+Sale 100: Code: 4	 Quantity 0	 PaidAmount	0
+Sale 100: Code: 5	 Quantity 0	 PaidAmount	0
+agres: 2019-4-29T20:22:57

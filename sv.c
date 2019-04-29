@@ -29,6 +29,7 @@ int artigos;
 int stocks;
 int vendas;
 
+/*
 void agread(int i){
 	char fileName[4];
 	sprintf(fileName,"ag%d",i);
@@ -69,8 +70,8 @@ void merger (int i, char* time) {
 	close(fd);
 	close(readFrom);
 	unlink(fileName);
-	printf("Unlinked %s\n",fileName);
 }
+
 
 void childProcess(int i){
 	char fileName[4];
@@ -162,6 +163,7 @@ void aggregator(int s){
 	printf("agres: %s\n",time);
     signal(SIGINT, aggregator);
 }
+*/
 
 void articleReader(){
 	lseek(artigos,0,SEEK_SET);
@@ -239,7 +241,7 @@ int main(int argc, char const *argv[]){
 	mkfifo("pipe",0666);
 	int pipe = open("pipe",O_RDONLY);
 	
-    signal(SIGINT, aggregator);	
+    //signal(SIGINT, aggregator);	
 
 	if(access("ARTIGOS",F_OK)!= -1) {
 		artigos = open("ARTIGOS", O_RDWR);
@@ -494,7 +496,6 @@ int main(int argc, char const *argv[]){
 				removeN(userList,q.pid);
 			break;
 		}
-		sleep(1);
 	}
 
 	cacheSaving();
@@ -507,9 +508,9 @@ int main(int argc, char const *argv[]){
 	while(read(vendas,&sv,sizeof(sale))>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
 	*/
 	
-	int salesLimit = (int) lseek(vendas,0,SEEK_END);
+	//int salesLimit = (int) lseek(vendas,0,SEEK_END);
 
-	if(salesLimit) aggregator(SIGINT);
+	//if(salesLimit) aggregator(SIGINT);
 	
 	close(pipe);
 	
