@@ -39,9 +39,9 @@ int main(int argc, char const *argv[]){
    	memset(&q.name,0,128);
    	sprintf(fifo,"pipe%d",getpid());
 	strcpy(q.name,fifo);
+   	mkfifo(fifo,0644);
 	write(pipe,&q,sizeof(q));
 
-   	mkfifo(fifo,0644);
    	int serverInput = open(fifo,O_RDWR);
    	if(serverInput!=-1) {
    		//dup2(serverInput,1);
@@ -49,7 +49,7 @@ int main(int argc, char const *argv[]){
    	}
 
 	char* buf = malloc(1024*sizeof(char));
-
+	int itee =0;
 	while (getLine(0,buf,1024)) {
 		int n;
 		if (strchr(buf,' ')) n = 2;	
@@ -83,7 +83,9 @@ int main(int argc, char const *argv[]){
 					case2.operation = 5;
 					case2.code = atoi(info[0]);
 					case2.value = atoi(info[1]);
-					write(pipe,&case2,sizeof(case2));			
+					printf("before %d\n",itee);
+					write(pipe,&case2,sizeof(case2));
+					printf("Sent %d\n",itee++);			
 					int res2;
 					read(serverInput,&res2,sizeof(int));
 					printf("stock:\t%d\n",res2);				

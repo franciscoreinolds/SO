@@ -80,6 +80,8 @@ void childProcess(int i){
 
 
 int main(int argc, char const *argv[]){
+	printf("1: %s\n",argv[0]);
+	clock_t CPU_time_1 = clock();
 	time_t rawtime;
 	struct tm* timeinfo;
 	time (&rawtime);
@@ -91,9 +93,9 @@ int main(int argc, char const *argv[]){
 	int saleLength = (int) lseek(vendas,0,SEEK_END);
 	childAmount = (saleLength / maxCap) + 1;
 	printf("sl: %d ca: %d maxCap %d\n",saleLength,childAmount,maxCap);
-	if (childAmount > 10) {
-		childAmount = 10;
-		maxCap = (saleLength/(sizeof(sale)*10))+1;
+	if (childAmount > 8) {
+		childAmount = 8;
+		maxCap = (saleLength/(sizeof(sale)*childAmount))+1;
 		printf("maxCap: %d\n",maxCap);
 	}
 	int pids[childAmount];
@@ -107,12 +109,12 @@ int main(int argc, char const *argv[]){
 				childProcess(i);
 			break;
 			default:
-				wait(NULL);
+				//wait(NULL);
 			break;
 		}
 	}
-	//int st;
-	//for (int i = 0 ; i < childAmount ; i++)	waitpid(pids[i],&st,0);
+	int st;
+	for (int i = 0 ; i < childAmount ; i++)	waitpid(pids[i],&st,0);
 	int agres = open(time,O_CREAT|O_RDWR,0644);
 	sale filler;
 	filler.quantity = 0;
@@ -135,5 +137,8 @@ int main(int argc, char const *argv[]){
 	close(artigos);
 	close(vendas);
 	printf("agres: %s\n",time);
+	clock_t CPU_time_2 = clock();
+	clock_t time_3 = (double) CPU_time_2 - CPU_time_1;
+    printf("CPU end time is : %ld (ms)\n", (time_3*1000)/CLOCKS_PER_SEC);
 	return 0;
 }
