@@ -202,9 +202,6 @@ int main(int argc, char const *argv[]){
    	q2.value = 0;
    	memset(&q2.name,0,128);
 	write(pipe,&q2,sizeof(q2));
-	puts("Wrote and is waiting for signal");
-	pause();
-	printf("Received signal\n");
 	close(pipe);
 	
 	articleReader();

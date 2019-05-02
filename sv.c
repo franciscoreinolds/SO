@@ -227,19 +227,21 @@ int main(int argc, char const *argv[]){
 				}
 			break;
 			case 4: // User disconnecting
-				printf("Gonna kill %d\n",q.pid);
 				if (!q.type){
 					close(getPipe(maList,q.pid));
 					maList = removeN(maList,q.pid);
 					print_list(maList);
 					puts(" ");
-					if (maList) kill(pop(maList),SIGUSR2);				
+					if (maList) {
+						curMA = pop(maList);
+						kill(pop(maList),SIGUSR2);
+					}
+					else kill				
 				}
 				else {
 					close(getPipe(userList,q.pid));
 					userList = removeN(userList,q.pid);
-				}
-				kill(q.pid, SIGUSR2);
+				}			
 			break;
 		}
 	}
