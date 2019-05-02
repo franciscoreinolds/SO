@@ -74,6 +74,7 @@ void articleReader(){
 		read(strings,&name,sizeof(char)*(a2.refF-a2.refI+1));
 		name[a2.refF-a2.refI+1] = '\0';
 		printf("CODE %d: NAME: %s\n",k,name);
+		puts(" ");
 	}	
 }
 
@@ -95,16 +96,12 @@ void get_pid(int sig, siginfo_t *info, void *context){
 
 int main(int argc, char const *argv[]){
 	int pipe = (int) open("pipe",O_WRONLY);
+
 	mypid = getpid();
 	struct sigaction sa = {0};
     sa.sa_flags = SA_SIGINFO;
     sa.sa_sigaction = get_pid;
     sigaction(SIGUSR2, &sa, NULL);
-
-	artigos = open("ARTIGOS", O_RDWR);
-	strings = open("STRINGS", O_APPEND | O_RDWR);
-	stocks = open("STOCKS", O_RDWR);
-	if(lseek(artigos,0,SEEK_END)) variableSetup();
 
    	query q;
    	q.pid = mypid;
@@ -120,6 +117,15 @@ int main(int argc, char const *argv[]){
 
 	write(pipe,&q,sizeof(q));
    	int serverInput = open(fifo,O_RDONLY);
+
+   	pause();
+
+	artigos = open("ARTIGOS", O_RDWR);
+	strings = open("STRINGS", O_APPEND | O_RDWR);
+	stocks = open("STOCKS", O_RDWR);
+	if(lseek(artigos,0,SEEK_END)) variableSetup();
+
+	sleep(2);
 
 	char* buf = malloc(1024*sizeof(char));
 	while (getLine(0,buf,1024)) {
@@ -191,11 +197,12 @@ int main(int argc, char const *argv[]){
 	query q2;
    	q2.pid = mypid;
    	q2.type = 0; //Article Maintenance
-   	q2.operation = 6; // Disconnecting
+   	q2.operation = 4; // Disconnecting
    	q2.code = -1;
    	q2.value = 0;
    	memset(&q2.name,0,128);
 	write(pipe,&q2,sizeof(q2));
+	puts("Wrote and is waiting for signal");
 	pause();
 	printf("Received signal\n");
 	close(pipe);

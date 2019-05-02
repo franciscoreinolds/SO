@@ -15,13 +15,15 @@
 #define maxCache 5
 
 int cachedArticles = 0;
+int childAmount = 0;
 int clientN = 0;
+int maxCap = 20*sizeof(sale);
+int curMA = -1;
 int nextCode = 0;
 int stringsSize = 0;
 int waste = 0;
-int childAmount = 0;
-int maxCap = 20*sizeof(sale);
 cached cache[maxCache];
+NODE* maList;
 NODE* userList;
 query q;
 int strings;
@@ -95,6 +97,7 @@ int main(int argc, char const *argv[]){
 		vendas = open("VENDAS",O_APPEND | O_CREAT | O_RDWR , 0644);		
 	}
 	init(&userList);
+	init(&maList);
 	mkfifo("pipe",0666);
 	int pipe = open("pipe",O_RDONLY);
 	int n;
@@ -108,10 +111,17 @@ int main(int argc, char const *argv[]){
 				strcpy(element.namedPipe,q.name);
 				element.type = q.type;
 				element.fd = open(q.name,O_WRONLY);
-				if(element.fd==-1) {
-					while(element.fd==-1) element.fd = open(q.name,O_WRONLY);
+				if (!element.type) { // is MA
+					printf("Oi\n");
+					if (curMA==-1) {
+						curMA = q.pid;
+						kill(q.pid,SIGUSR2);
+					}
+					maList = add(maList,element);
+					printf("getList: %d\n",sizeList(maList));
+					print_list(maList);
 				}
-				userList = add(userList,element);
+				else userList = add(userList,element);
 			break;
 			case 1:; // Price changing
 				if (stockLoc < fileLimit){
@@ -218,9 +228,18 @@ int main(int argc, char const *argv[]){
 			break;
 			case 4: // User disconnecting
 				printf("Gonna kill %d\n",q.pid);
+				if (!q.type){
+					close(getPipe(maList,q.pid));
+					maList = removeN(maList,q.pid);
+					print_list(maList);
+					puts(" ");
+					if (maList) kill(pop(maList),SIGUSR2);				
+				}
+				else {
+					close(getPipe(userList,q.pid));
+					userList = removeN(userList,q.pid);
+				}
 				kill(q.pid, SIGUSR2);
-				close(getPipe(userList,q.pid));
-				removeN(userList,q.pid);
 			break;
 		}
 	}

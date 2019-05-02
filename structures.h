@@ -63,9 +63,12 @@ typedef struct stockAndPrice{
 
 void init(NODE** head);
 NODE* add(NODE* node, user toI);
-void removeN(NODE* head, int pid);
+NODE* removeN(NODE* head, int pid);
 NODE *free_list(NODE *head);
 int getPipe(NODE*head, int pid);
+void print_list(NODE* head);
+int sizeList(NODE* head);
+int pop(NODE* head);
 void print_sale(sale s, int i);
 int getLine(int fd, char* buffer, int n);
 int space_counter(char* buf);

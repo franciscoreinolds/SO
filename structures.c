@@ -10,17 +10,25 @@ void init(NODE** head) {
 }
 
 NODE* add(NODE* node, user toI) {
-    NODE* temp = (NODE*) malloc(sizeof (NODE));
-    if (temp == NULL) {
-        exit(0); // no memory available
+
+    NODE* toInsert = (NODE*) malloc(sizeof (NODE));
+    toInsert->data = toI;
+    toInsert->next = NULL;
+
+    if (!toInsert) exit(0);
+
+    if (!node) node = toInsert;
+
+    else {
+        NODE* temp = node;
+        while (temp->next) temp = temp->next;
+        temp->next = toInsert;
     }
-    temp->data = toI;
-    temp->next = node;
-    node = temp;
+
     return node;
 }
 
-void removeN(NODE* head, int pid){
+NODE* removeN(NODE* head, int pid){
     NODE* temp;
     NODE* prev;
     
@@ -30,25 +38,29 @@ void removeN(NODE* head, int pid){
         exit(EXIT_FAILURE); // no memory available
     }
 
-    if (temp != NULL && temp->data.pid == pid) { 
+    if (temp && temp->data.pid == pid) { 
         unlink(temp->data.namedPipe);
-        head = temp->next;
-        free(temp); 
-        return; 
+        head = head->next;
+        free(temp);
+        temp = head;
+        return head;
     } 
 
+    puts("Nem chega aqui...");
     while (temp != NULL && temp->data.pid != pid) { 
         prev = temp; 
         temp = temp->next; 
     } 
   
-    if (temp == NULL) return; 
+    if (temp == NULL) return head; 
 
     unlink(temp->data.namedPipe);
 
     prev->next = temp->next; 
   
     free(temp);
+
+    return head;
 }
 
 NODE *free_list(NODE *head) {
@@ -62,10 +74,29 @@ NODE *free_list(NODE *head) {
     return NULL;
 }
 
+void print_list(NODE* head) {
+    NODE * temp;
+    for (temp = head; temp; temp = temp->next) printf("pid: %d\n",temp->data.pid);
+    
+}
+
 int getPipe (NODE* head, int pid) {
     NODE * temp;
     for (temp = head; temp; temp = temp->next) if (temp->data.pid == pid) return temp->data.fd;
     return -1;
+}
+
+int sizeList(NODE* head) {
+    int i = 0;
+    NODE * temp;
+    for (temp = head; temp; temp = temp->next) i++;
+    return i;
+}
+
+int pop(NODE* head) {
+    NODE* temp;
+    temp = head;
+    return temp->data.pid;
 }
 
 void print_sale(sale s, int i){
