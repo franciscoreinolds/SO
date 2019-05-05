@@ -12,6 +12,7 @@
 int signalPid = -1;
 int mypid;
 int nextCode = 0;
+int namedPipe;
 int stringsSize = 0;
 int waste = 0;
 char fifo[15];
@@ -57,6 +58,14 @@ void fileCompressor(){
 	clock_t comp3 = comp2-comp1;	
 	printf("Compression time: %ld (ms)\n", (comp3*1000)/CLOCKS_PER_SEC);
 
+	query q;
+	memset(&q.name,0,128);
+	q.pid = mypid;
+	q.type = 0;
+	q.operation = 1;
+	q.code = 0;
+	q.value = 0;
+	write(namedPipe,&q,sizeof(q));	
 }
 
 void articleReader(){
@@ -95,7 +104,7 @@ void get_pid(int sig, siginfo_t *info, void *context){
 }
 
 int main(int argc, char const *argv[]){
-	int pipe = (int) open("pipe",O_WRONLY);
+	namedPipe = open("pipe",O_WRONLY);
 
 	mypid = getpid();
 	struct sigaction sa = {0};
@@ -114,9 +123,8 @@ int main(int argc, char const *argv[]){
 	strcpy(q.name,fifo);
 	printf("fifo: %s\n",fifo);
    	mkfifo(fifo,0644);
-
-	write(pipe,&q,sizeof(q));
-   	int serverInput = open(fifo,O_RDONLY);
+   	int serverInput = open(fifo,O_RDWR);	
+	write(namedPipe,&q,sizeof(q));
 
    	pause();
 
@@ -125,7 +133,6 @@ int main(int argc, char const *argv[]){
 	stocks = open("STOCKS", O_RDWR);
 	if(lseek(artigos,0,SEEK_END)) variableSetup();
 
-	sleep(2);
 
 	char* buf = malloc(1024*sizeof(char));
 	while (getLine(0,buf,1024)) {
@@ -175,34 +182,52 @@ int main(int argc, char const *argv[]){
 
 					printf("stringsSize: %d and waste %d\n",stringsSize,waste);
 					printf("waste percentage: %f\n", (waste*100.0/stringsSize));
-					if ((waste*100.0/stringsSize) >= 20.0) fileCompressor();
+					if ((waste*100.0/stringsSize) >= 20.0) fileCompressor();					
 				break;
 				case 'p':;
 					query caseP;
 					memset(&caseP.name,0,128);
 					caseP.pid = mypid;
 					caseP.type = 0;
-					caseP.operation = 3;
+					caseP.operation = 2;
 					caseP.code = atoi(info[1]);
 					caseP.value = atoi(info[2]);
-					write(pipe,&caseP,sizeof(caseP));					
+					write(namedPipe,&caseP,sizeof(caseP));					
 				break;
-			}	
+			}
 
 			for(it=0;it<3;it++) free(info[it]);
 			free(info);
+		
+		}
+		else if (buf[0] == 'a' && buf[1] == '\n') {
+			query caseA;
+			memset(&caseA.name,0,128);
+			caseA.pid = mypid;
+			caseA.type = 0;
+			caseA.operation = 3;
+			caseA.code = 0;
+			caseA.value = 0;
+			write(namedPipe,&caseA,sizeof(caseA));				
 		}
 	}
 
 	query q2;
    	q2.pid = mypid;
    	q2.type = 0; //Article Maintenance
-   	q2.operation = 4; // Disconnecting
+   	q2.operation = 6; // Disconnecting
    	q2.code = -1;
    	q2.value = 0;
    	memset(&q2.name,0,128);
-	write(pipe,&q2,sizeof(q2));
-	close(pipe);
+	write(namedPipe,&q2,sizeof(q2));
+
+	/*
+	puts("Wrote and is waiting for signal");
+	pause();
+	printf("Received signal\n");
+	*/
+
+	close(namedPipe);
 	
 	articleReader();
 

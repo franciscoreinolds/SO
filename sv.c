@@ -12,7 +12,7 @@
 #include <string.h>
 #include "structures.h"
 
-#define maxCache 5
+#define maxCache 3
 
 int cachedArticles = 0;
 int childAmount = 0;
@@ -30,6 +30,25 @@ int strings;
 int artigos;
 int stocks;
 int vendas;
+
+void articleReader(){
+	int lim = (int) lseek(artigos,0,SEEK_END);
+	lseek(artigos,0,SEEK_SET);
+	struct article a2;
+	printf("lim: %d article %d\n",lim, (int) sizeof(article));
+	for (int k = 0;read(artigos,&a2,sizeof(article));k++){
+		int stock;
+		lseek(stocks,k*sizeof(int),SEEK_SET);
+		read(stocks,&stock,sizeof(int));
+		printf("CODE %d: a1.refI=%d\ta1.refF=%d\ta1.price=%d\ta1.accesses=%d\tand final stock %d\n",k,a2.refI,a2.refF,a2.price,a2.accesses,stock);
+		char name[1+a2.refF-a2.refI];
+		lseek(strings,a2.refI,SEEK_SET);
+		read(strings,&name,sizeof(char)*(a2.refF-a2.refI+1));
+		name[a2.refF-a2.refI+1] = '\0';
+		printf("CODE %d: NAME: %s\n",k,name);
+		puts(" ");
+	}	
+}
 
 int compare (const void * a, const void * b){
 	const cached *a1 = (const cached *)a;
@@ -78,6 +97,7 @@ void updateCache(int price, int stk, int acc, int n){
 	else cache[cachedArticles++] = c;
 	printf("Added item with code %d and price %d\n",c.code,c.price);
 	qsort (cache, cachedArticles, sizeof(cached), compare);
+	puts("Saiu");
 }
 
 
@@ -101,7 +121,7 @@ int main(int argc, char const *argv[]){
 	mkfifo("pipe",0666);
 	int pipe = open("pipe",O_RDONLY);
 	int n;
-	while((n=read(pipe,&q,sizeof(q)))>0){
+	while((n=read(pipe,&q,sizeof(q)))>0) {
 		int fileLimit = (int) lseek(stocks,0,SEEK_END); 
 		int stockLoc = (int) lseek(stocks,q.code*sizeof(int),SEEK_SET);
 		switch(q.operation){
@@ -112,18 +132,23 @@ int main(int argc, char const *argv[]){
 				element.type = q.type;
 				element.fd = open(q.name,O_WRONLY);
 				if (!element.type) { // is MA
-					printf("Oi\n");
 					if (curMA==-1) {
 						curMA = q.pid;
 						kill(q.pid,SIGUSR2);
 					}
 					maList = add(maList,element);
-					printf("getList: %d\n",sizeList(maList));
 					print_list(maList);
 				}
-				else userList = add(userList,element);
+				else {
+					userList = add(userList,element);
+					print_list(userList);
+				}
 			break;
-			case 1:; // Price changing
+			case 1:
+				close(strings);
+				strings = open("STRINGS", O_APPEND | O_CREAT | O_RDWR , 0644);
+			break;
+			case 2:; // Price changing
 				if (stockLoc < fileLimit){
 					lseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 					write(artigos,&q.value,sizeof(int));
@@ -147,16 +172,27 @@ int main(int argc, char const *argv[]){
 					}
 				}
 			break;
-			case 2:; // Stock checking
+			/*
+			case 3:
+				int child = fork();
+				if (!child) {
+					execlp("")
+				}
+				else waitpid(child,NULL,0);
+			break;
+			*/
+			case 4:; // Stock checking
+				reply r2;
 				stockAndPrice s;
 				if (stockLoc < fileLimit) {
-
+					r2.code = 0;
 					int i = checkCache();
 					if (i+1) {
 						s.stock = cache[i].stock;
+						r2.amount = cache[i].stock;
 						s.price = cache[i].price;
-						write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));
-						break; // If article was found in cache 
+						r2.price = cache[i].price;
+						write(getPipe(userList,q.pid),&r2,sizeof(struct reply));
 					}
 					else { // Check if the item is in file
 						read(stocks,&s.stock,sizeof(int));
@@ -166,43 +202,53 @@ int main(int argc, char const *argv[]){
 						read(artigos,&acc2, sizeof(int));
 						acc2++;
 
+						r2.amount = s.stock;
+						r2.price = s.price;
+
 						lseek(artigos,-sizeof(int),SEEK_CUR);
 						write(artigos,&acc2,sizeof(int));
-						
 						updateCache(s.price, s.stock, acc2, 2);
-
-						write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));					
+						write(getPipe(userList,q.pid),&r2,sizeof(struct reply));
 					}
 				}
 				else{ // Item doesn't exist
-					s.stock = -1;
-					s.price = -1;
-					write(getPipe(userList,q.pid),&s,sizeof(stockAndPrice));
+					r2.code = -1;
+					r2.amount = 0;
+					r2.price = 0;
+					write(getPipe(userList,q.pid),&r2,sizeof(reply));
 				}
 			break;
-			case 3:; // Stock movement
+			case 5:; // Stock movement
+				reply r3;
 				if (stockLoc < fileLimit) {
 					int stock;
 					int price;
+
+					r3.code = 1; // Indicating that it's a reply to CV's stock movement request 
+					r3.price = 0;
+
 					sale s5;
 					s5.code = q.code;
 					s5.quantity = q.value;
 
+
 					int i = checkCache();
 					if (i+1) {
 						cache[i].stock += (-1*q.value);
-						write(getPipe(userList,q.pid),&cache[i].stock,sizeof(int));
+						r3.amount = cache[i].stock;
+						write(getPipe(userList,q.pid),&r3,sizeof(reply));
 						s5.paidAmount = cache[i].price*q.value;
 						lseek(vendas,0,SEEK_END);
 						if (q.value>0) write(vendas,&s5,sizeof(sale));
-						break;
 					}
 					else { // Check if the item is in the file
 						read(stocks,&stock,sizeof(int));
 						stock += (-1*q.value);
 						lseek(stocks,-sizeof(int),SEEK_CUR);
 						write(stocks,&stock,sizeof(int));
-
+						r3.amount = stock;
+						write(getPipe(userList,q.pid),&r3,sizeof(reply));
+						
 						lseek(artigos,q.code*sizeof(struct article)+2*sizeof(int),SEEK_SET);
 						read(artigos,&price,sizeof(int));
 						s5.paidAmount = price*q.value;
@@ -215,39 +261,40 @@ int main(int argc, char const *argv[]){
 
 						lseek(artigos,-sizeof(int),SEEK_CUR);
 						write(artigos,&acc3,sizeof(int));
-						
-						write(getPipe(userList,q.pid),&stock,sizeof(int));
-						
+
 						updateCache(price, stock, acc3, 3);				
 					}
 				}	
 				else{ // Item doesn't exist
-					int tos = -1;
-					write(getPipe(userList,q.pid),&tos,sizeof(int));
+					r3.amount = -1;
+					r3.code = -1; // Indicates that the stock movement was unsuccessful due to the article not existing
+					r3.price = -1;
+					write(getPipe(userList,q.pid),&r3,sizeof(reply));
 				}
 			break;
-			case 4: // User disconnecting
+			case 6: // User disconnecting
 				if (!q.type){
 					close(getPipe(maList,q.pid));
 					maList = removeN(maList,q.pid);
 					print_list(maList);
 					puts(" ");
-					if (maList) {
-						curMA = pop(maList);
-						kill(pop(maList),SIGUSR2);
-					}
-					else kill				
+					if (maList) kill(pop(maList),SIGUSR2);		
+					kill(q.pid, SIGUSR2);		
 				}
 				else {
 					close(getPipe(userList,q.pid));
 					userList = removeN(userList,q.pid);
-				}			
+				}
 			break;
 		}
-	}
+		//sleep(1);
+		//usleep(100000);
+	}	
 
 	cacheSaving();
-		
+	
+	articleReader();
+
 	/*
 	struct sale sv;
 	lseek(vendas,0,SEEK_SET);
