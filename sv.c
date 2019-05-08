@@ -119,9 +119,9 @@ int main(int argc, char const *argv[]){
 	init(&userList);
 	init(&maList);
 	mkfifo("pipe",0666);
-	int pipe = open("pipe",O_RDONLY);
-	int n;
-	while((n=read(pipe,&q,sizeof(q)))>0) {
+	int namedPipe = open("pipe",O_RDONLY);
+	int n, counter = 0;
+	while((n=read(namedPipe,&q,sizeof(q)))>0) {
 		int fileLimit = (int) lseek(stocks,0,SEEK_END); 
 		int stockLoc = (int) lseek(stocks,q.code*sizeof(int),SEEK_SET);
 		switch(q.operation){
@@ -170,17 +170,57 @@ int main(int argc, char const *argv[]){
 
 						updateCache(q.value, stk1, acc1, 1);
 					}
+					counter++;
+					if (counter==100) {
+						cacheSaving(); 
+						counter = 0;
+					}
 				}
 			break;
-			/*
 			case 3:
-				int child = fork();
-				if (!child) {
-					execlp("")
+				cacheSaving();
+				close(vendas);
+				rename("VENDAS","VENDASAG");
+				vendas = open("VENDAS",O_APPEND | O_CREAT | O_RDWR , 0644);
+				
+				int des_p[2];
+				int pipeOpening = pipe(des_p);
+				if(pipeOpening == -1) exit(1);
+
+				if(fork() == 0) {            //first fork
+					close(STDOUT_FILENO);  //closing stdout
+					dup(des_p[1]);         //replacing stdout with pipe write 
+					close(des_p[0]);       //closing pipe read
+					close(des_p[1]);
+
+					char* prog1[3];
+					prog1[0] = "cat";
+					prog1[1] = "VENDASAG";
+					prog1[2] =  0;
+					execvp(prog1[0], prog1);
+					exit(1);
 				}
-				else waitpid(child,NULL,0);
+
+				if(fork() == 0) {            //creating 2nd child
+					close(STDIN_FILENO);   //closing stdin
+					dup(des_p[0]);         //replacing stdin with pipe read
+					close(des_p[1]);       //closing pipe write
+					close(des_p[0]);
+					char* prog2[2];
+					prog2[0] = "./ag";
+					prog2[1] =  0;
+					execvp(prog2[0], prog2);
+					exit(1);
+				}
+
+				close(des_p[0]);
+				close(des_p[1]);
+				//sleep(1);
+				/*
+				wait(0);
+				wait(0);
+				*/
 			break;
-			*/
 			case 4:; // Stock checking
 				reply r2;
 				stockAndPrice s;
@@ -209,6 +249,12 @@ int main(int argc, char const *argv[]){
 						write(artigos,&acc2,sizeof(int));
 						updateCache(s.price, s.stock, acc2, 2);
 						write(getPipe(userList,q.pid),&r2,sizeof(struct reply));
+					}
+					counter++;
+					if (counter==100) {
+						printf("saved to cache!\n");
+						cacheSaving(); 
+						counter = 0;
 					}
 				}
 				else{ // Item doesn't exist
@@ -264,6 +310,11 @@ int main(int argc, char const *argv[]){
 
 						updateCache(price, stock, acc3, 3);				
 					}
+					counter++;
+					if (counter==100) {
+						cacheSaving(); 
+						counter = 0;
+					}
 				}	
 				else{ // Item doesn't exist
 					r3.amount = -1;
@@ -293,6 +344,8 @@ int main(int argc, char const *argv[]){
 
 	cacheSaving();
 	
+	printf("Oi\n");
+
 	articleReader();
 
 	/*
@@ -301,7 +354,7 @@ int main(int argc, char const *argv[]){
 	while(read(vendas,&sv,sizeof(sale))>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
 	*/
 	
-	close(pipe);
+	close(namedPipe);
 	
 	close(artigos);
 	close(stocks);

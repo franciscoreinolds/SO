@@ -136,6 +136,7 @@ int main(int argc, char const *argv[]){
 
 	char* buf = malloc(1024*sizeof(char));
 	while (getLine(0,buf,1024)) {
+		if (buf[1]=='\0') printf("buf[0]: %c buf[1]: %cF\n",buf[0],buf[1]);
 		if (space_counter(buf)==2) {
 			char *token = strtok(buf," ");
 			char** info = malloc(3*sizeof(char*));
@@ -200,7 +201,7 @@ int main(int argc, char const *argv[]){
 			free(info);
 		
 		}
-		else if (buf[0] == 'a' && buf[1] == '\n') {
+		else if (buf[0] == 'a' && buf[1] == '\0') {
 			query caseA;
 			memset(&caseA.name,0,128);
 			caseA.pid = mypid;
