@@ -32,10 +32,8 @@ int stocks;
 int vendas;
 
 void articleReader(){
-	int lim = (int) lseek(artigos,0,SEEK_END);
 	lseek(artigos,0,SEEK_SET);
 	struct article a2;
-	printf("lim: %d article %d\n",lim, (int) sizeof(article));
 	for (int k = 0;read(artigos,&a2,sizeof(article));k++){
 		int stock;
 		lseek(stocks,k*sizeof(int),SEEK_SET);
@@ -45,8 +43,7 @@ void articleReader(){
 		lseek(strings,a2.refI,SEEK_SET);
 		read(strings,&name,sizeof(char)*(a2.refF-a2.refI+1));
 		name[a2.refF-a2.refI+1] = '\0';
-		printf("CODE %d: NAME: %s\n",k,name);
-		puts(" ");
+		printf("CODE %d: NAME: %s\n\n",k,name);
 	}	
 }
 
@@ -83,7 +80,6 @@ void updateCache(int price, int stk, int acc, int n){
 	c.stock = stk;
 	c.accesses = acc;
 	if (cachedArticles == maxCache) { // Updating cache
-		printf("acc%d: %d cache[0].accesses: %d\n", n, acc, cache[0].accesses);
 		if (acc >= cache[0].accesses) {
 			cached repl = cache[0];
 			cache[0] = c;
@@ -91,13 +87,10 @@ void updateCache(int price, int stk, int acc, int n){
 			write(artigos,&repl.accesses,sizeof(int));
 			lseek(stocks,repl.code*sizeof(int),SEEK_SET);
 			write(stocks,&repl.stock,sizeof(int));
-			printf("The item with code %d was replaced and its accesses, %d and stock %d got wrote to the respective file.\n",repl.code,repl.accesses,repl.stock);
 		}
 	}	
 	else cache[cachedArticles++] = c;
-	printf("Added item with code %d and price %d\n",c.code,c.price);
 	qsort (cache, cachedArticles, sizeof(cached), compare);
-	puts("Saiu");
 }
 
 
@@ -252,7 +245,6 @@ int main(int argc, char const *argv[]){
 					}
 					counter++;
 					if (counter==100) {
-						printf("saved to cache!\n");
 						cacheSaving(); 
 						counter = 0;
 					}
@@ -338,24 +330,11 @@ int main(int argc, char const *argv[]){
 				}
 			break;
 		}
-		//sleep(1);
-		//usleep(100000);
 	}	
-
 	cacheSaving();
-	
-	printf("Oi\n");
-
 	articleReader();
-
-	/*
-	struct sale sv;
-	lseek(vendas,0,SEEK_SET);
-	while(read(vendas,&sv,sizeof(sale))>0) printf("Code: %d Amount %d Paid Amount %d\n",sv.code,sv.quantity,sv.paidAmount);
-	*/
 	
 	close(namedPipe);
-	
 	close(artigos);
 	close(stocks);
 	close(strings);

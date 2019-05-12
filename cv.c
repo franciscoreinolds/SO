@@ -69,7 +69,6 @@ int main(int argc, char const *argv[]){
 						write(pipe,&case2,sizeof(case2));
 					break;
 				}
-
 				for(it=0;it<n;it++) free(info[it]);
 				free(info);
 			}
@@ -85,15 +84,12 @@ int main(int argc, char const *argv[]){
 		write(pipe,&e,sizeof(e));
 
 		free(buf);	
-		printf("No wait\n");
 		waitpid(rec,NULL,0);
-		printf("After wait\n");
    	}
 
    	else { // Child
    		int serverInput = open(fifo,O_RDONLY);   		
 		reply r;
-		int receivedReplies = 0;
 		while(read(serverInput,&r,sizeof(reply))) {
 			switch(r.code){
 				case 0:; //Stock checking
@@ -120,16 +116,10 @@ int main(int argc, char const *argv[]){
 				write(1,"Operation failed\n",strlen("Operation failed\n"));
 				break;		
 			}
-			printf("receivedReplies: %d\n",receivedReplies++);
 		}
 		close(serverInput);
-		printf("Vai sair\n");
 		_exit(0);
    	}
-
    	wait(NULL);
-
-	printf("Finish\n");
-
 	return 0;
 }

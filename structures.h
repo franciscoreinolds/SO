@@ -23,14 +23,6 @@ typedef struct article {
 	int accesses;
 }article;
 
-typedef struct stock {
-	int amount;
-}stock;
-
-typedef struct string {
-	char* name;
-}name;
-
 typedef struct sale {
 	int code;
 	int quantity;
@@ -44,6 +36,11 @@ typedef struct user {
 	int fd;
 }user;
 
+typedef struct stockAndPrice{
+	int stock;
+	int price;
+}stockAndPrice;
+
 typedef struct node {
     user data;
     struct node* next;
@@ -55,11 +52,6 @@ typedef struct cached{
 	int stock;
 	int accesses;
 }cached;
-
-typedef struct stockAndPrice{
-	int stock;
-	int price;
-}stockAndPrice;
 
 void init(NODE** head);
 NODE* add(NODE* node, user toI);
